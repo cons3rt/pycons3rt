@@ -167,7 +167,7 @@ function main() {
     done
 
     # Ensure the pycons3rt install script can be found
-    pycons3rtInstaller="${sourceDir}/bin/install.sh"
+    pycons3rtInstaller="${pycons3rtRootDir}/scripts/install.sh"
     if [ ! -f ${pycons3rtInstaller} ] ; then
         ${logErr} "File not found: ${pycons3rtInstaller}. pycons3rt install file not found, src may not have been checked out or staged correctly"
         return 5
@@ -181,7 +181,7 @@ function main() {
 
     # Install the pycons3rt python project into the system python lib
     ${logInfo} "Installing pycons3rt ..."
-    ${sourceDir}/bin/install.sh
+    ${pycons3rtInstaller}
     installResult=$?
 
     # Exit with an error if the checkout did not succeed
