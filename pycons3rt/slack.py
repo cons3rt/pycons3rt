@@ -41,8 +41,8 @@ class SlackMessage(object):
     def __init__(self, webhook_url, text, **kwargs):
         """Creates a SlackMessage object
 
-        :param webhook_url:
-        :param text:
+        :param webhook_url: (str) Webhook URL provided by Slack
+        :param text: (str) Text to send in the Slack message
         :param kwargs:
         :return: None
         :raises ValueError
