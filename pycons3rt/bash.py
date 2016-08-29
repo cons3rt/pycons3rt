@@ -416,7 +416,7 @@ def yum_install(packages, downloadonly=False, dest_dir='/tmp'):
 
 
 def rpm_install(install_dir):
-    """This method install all RPM files in a specific dir
+    """This method installs all RPM files in a specific dir
 
     :param install_dir: (str) Full path to the directory
     :return int exit code form the rpm command
@@ -1152,28 +1152,6 @@ def restore_iptables(firewall_rules):
         log.error(msg)
         raise OSError(msg)
     log.info('Saving iptables produced output:\n{o}'.format(o=result['output']))
-
-
-def git_clone(repo_url, dest_dir):
-    """Clones a git repo to the specified directory
-
-    :param repo_url: (str) URL of the git repository to clone
-                     use https:// or git://
-    :param dest_dir: (str) full path to the destination directory
-                    for cloning
-    :return: None
-    :raises TypeError
-    """
-    log = logging.getLogger(mod_logger + '.git_clone')
-    if not isinstance(repo_url, basestring):
-        msg = 'repo_url argument must be a string'
-        log.error(msg)
-        raise TypeError(msg)
-    if not isinstance(dest_dir, basestring):
-        msg = 'dest_dir argument must be a string'
-        log.error(msg)
-        raise TypeError(msg)
-    # TODO add this logic
 
 
 def main():

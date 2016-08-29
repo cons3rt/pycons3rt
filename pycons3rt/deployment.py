@@ -176,7 +176,7 @@ class Deployment(object):
         log.info('Deployment properties have been read in.')
 
     def get_property(self, regex):
-        """Gets the value of a specific property
+        """Gets the name of a specific property
 
         This public method is passed a regular expression and
         returns the matching property name. If either the property
@@ -184,7 +184,7 @@ class Deployment(object):
         property, this function will return None.
 
         :param regex: Regular expression to search on
-        :return: (str) Property matching the passed regex or None.
+        :return: (str) Property name matching the passed regex or None.
         """
         log = logging.getLogger(self.cls_logger + '.get_property')
         log.info('Looking up property based on regex: %s', regex)
@@ -212,26 +212,26 @@ class Deployment(object):
             log.info('Passed regex did not match any property: %s', regex)
             return None
 
-    def get_value(self, _prop):
+    def get_value(self, property_name):
         """Returns the value associated to the passed property
 
         This public method is passed a specific property as a string
         and returns the value of that property. If the property is not
         found, None will be returned.
 
-        :param _prop (str) The name of the property
+        :param property_name (str) The name of the property
         :return: (str) value for the passed property, or None.
         """
         log = logging.getLogger(self.cls_logger + '.get_value')
-        if not isinstance(_prop, basestring):
+        if not isinstance(property_name, basestring):
             log.error('_prop arg is not a string')
             return None
-        prop = self.get_property(_prop)
+        prop = self.get_property(property_name)
         if prop:
             log.info('Found value: %s', self.properties[prop])
             return self.properties[prop]
         else:
-            log.info('Did not find a value for property: %s', _prop)
+            log.info('Did not find a value for property: {p}'.format(p=property_name))
             return None
 
     def set_cons3rt_role_name(self):

@@ -26,7 +26,7 @@ gitUrl="https://${gitServerDomainName}/cons3rt/pycons3rt.git"
 defaultBranch="develop"
 
 # Root directory for pycons3rt
-pycons3rtRootDir="~/.cons3rt"
+pycons3rtRootDir="/root/.cons3rt"
 
 # Defines the directory where cons3rt-deploying-cons3rt source code will
 # be staged and installed to.
@@ -167,7 +167,7 @@ function main() {
     done
 
     # Ensure the pycons3rt install script can be found
-    pycons3rtInstaller="${pycons3rtRootDir}/scripts/install.sh"
+    pycons3rtInstaller="${sourceDir}/scripts/install.sh"
     if [ ! -f ${pycons3rtInstaller} ] ; then
         ${logErr} "File not found: ${pycons3rtInstaller}. pycons3rt install file not found, src may not have been checked out or staged correctly"
         return 5
