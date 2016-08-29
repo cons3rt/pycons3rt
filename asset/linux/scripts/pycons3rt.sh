@@ -189,8 +189,8 @@ function main() {
     fi
 
     # Copy the logging config file to the log directory
-    ${logInfo} "Staging the logging config file..."
-    run_and_check_status cp -f ${sourceDir}/pycons3rt/pycons3rt-logging.conf ${pycons3rtRootDir}/log/
+    #${logInfo} "Staging the logging config file..."
+    #run_and_check_status cp -f ${sourceDir}/pycons3rt/pycons3rt-logging.conf ${pycons3rtRootDir}/log/
 
     # Ensure asset install was successful
     ${logInfo} "Verifying asset installed successfully ..."
