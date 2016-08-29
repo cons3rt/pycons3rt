@@ -47,6 +47,7 @@ class Logify(object):
     log_file_warn = os.path.join(log_dir, 'pycons3rt-warn.log')
     try:
         fileConfig(config_file)
+        os.chdir(log_dir)
     except Exception:
         _, ex, trace = sys.exc_info()
         print 'Logging config file not found: {f}, using standard configuration...\n{e}'.format(
