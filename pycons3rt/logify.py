@@ -45,9 +45,10 @@ class Logify(object):
     log_file_info = os.path.join(log_dir, 'pycons3rt-info.log')
     log_file_debug = os.path.join(log_dir, 'pycons3rt-debug.log')
     log_file_warn = os.path.join(log_dir, 'pycons3rt-warn.log')
+    os.chdir(log_dir)
     try:
         fileConfig(config_file)
-    except Exception:
+    except (IOError, OSError):
         _, ex, trace = sys.exc_info()
         print 'Logging config file not found: {f}, using standard configuration...\n{e}'.format(
                 f=config_file, e=str(ex))
@@ -146,15 +147,6 @@ def main():
     log.info('This is INFO')
     log.warning('This is a WARNING')
     log.error('This is an ERROR')
-    #Logify.set_log_level('DEBUG')
-    #log.debug('This is DEBUG')
-    Logify.set_log_level('WARN')
-    log.debug('This is DEBUG')
-    log.info('This is INFO')
-    log.warning('This is a WARNING')
-    log.error('This is an ERROR')
-    #Logify.set_log_level('INFO')
-    #log.info('Finally, reset level to: INFO')
 
 
 if __name__ == '__main__':

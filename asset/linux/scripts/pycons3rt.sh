@@ -175,10 +175,6 @@ function main() {
         ${logInfo} "Found file: ${pycons3rtInstaller}"
     fi
 
-    # Set permissions
-    ${logInfo} "Setting permissions on ${sourceDir}..."
-    run_and_check_status chmod -R 775 ${sourceDir}
-
     # Install the pycons3rt python project into the system python lib
     ${logInfo} "Installing pycons3rt ..."
     ${pycons3rtInstaller}
@@ -191,6 +187,10 @@ function main() {
     else
         ${logInfo} "pycons3rt completed successfully!"
     fi
+
+    # Copy the logging config file to the log directory
+    #${logInfo} "Staging the logging config file..."
+    #run_and_check_status cp -f ${sourceDir}/pycons3rt/pycons3rt-logging.conf ${pycons3rtRootDir}/log/
 
     # Ensure asset install was successful
     ${logInfo} "Verifying asset installed successfully ..."
