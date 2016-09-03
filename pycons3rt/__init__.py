@@ -20,6 +20,7 @@ pycons3rt
 :license: ISC, see LICENSE for more details.
 
 """
+from . import osutil
 from . import aliasip
 from . import bash
 from . import cons3rtutil
@@ -29,6 +30,7 @@ from . import logify
 from . import nexus
 from . import slack
 
+osutil.initialize_pycons3rt_dirs()
 
 __title__ = 'pycons3rt'
 __version__ = '0.0.1'

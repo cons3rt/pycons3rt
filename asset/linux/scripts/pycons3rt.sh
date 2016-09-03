@@ -26,14 +26,21 @@ gitUrl="https://${gitServerDomainName}/cons3rt/pycons3rt.git"
 defaultBranch="develop"
 
 # Root directory for pycons3rt
-pycons3rtRootDir="/root/.cons3rt"
+pycons3rtRootDir="/root/.pycons3rt"
 
 # Defines the directory where cons3rt-deploying-cons3rt source code will
 # be staged and installed to.
-sourceDir="${pycons3rtRootDir}/pycons3rt"
+pycons3rtSourceDir="${pycons3rtRootDir}/src"
+sourceDir="${pycons3rtSourceDir}/pycons3rt"
+
+# Pycons3rt conf directory
+confDir="/etc/pycons3rt/conf"
 
 # Deployment properties filename
 deploymentPropsFile="deployment-properties.sh"
+
+# List of prereq packages to install before pip
+prereqPackages="gcc python-devel python-setuptools python-crypto"
 
 # Array to maintain exit codes of RPM install commands
 resultSet=();
@@ -80,6 +87,72 @@ function verify_dns() {
     done
     ${logErr} "Failed DNS resolution for domain name: ${domainName}"
     return 1
+}
+
+# Install pycons3rt prerequisites including boto3 and pip
+function install_prerequisites() {
+    ${logInfo} "Installing AWS CLI, AWS SDK, Ansible, and prerequisite packages..."
+	python --version
+	if [ $? -ne 0 ] ; then
+        ${logErr} "Python not detected, and is a required dependency"
+        return 1
+    fi
+
+    # Install gcc and python-dev as required
+    packageManagerCommand="yum -y install"
+    which dnf
+    if [ $? -eq 0 ] ; then
+    ${logInfo} "Detected dnf on this system, dnf will be used to install packages"
+        packageManagerCommand="dnf --assumeyes install"
+    fi
+
+    which apt-get
+    if [ $? -eq 0 ] ; then
+        ${logInfo} "Detected apt-get on this system, apt-get will be used to install packages"
+        packageManagerCommand="apt-get -y install"
+    fi
+
+    installCommand="${packageManagerCommand} ${prereqPackages}"
+    ${logInfo} "Using package manager command: ${installCommand}"
+    run_and_check_status ${installCommand}
+
+    if [ $? -ne 0 ] ; then
+        ${logErr} "Unable to install prerequisites for the AWS CLI and python packages"
+        return 2
+    else
+        ${logInfo} "Successfully install prerequisites"
+    fi
+
+    # Install PIP
+	run_and_check_status curl -O "https://bootstrap.pypa.io/get-pip.py"
+	run_and_check_status python get-pip.py
+	run_and_check_status pip install setuptools --upgrade
+
+	# Install Python packages using PIP
+	run_and_check_status pip install awscli
+	run_and_check_status pip install boto
+	run_and_check_status pip install boto3
+	run_and_check_status pip install requests==2.10.0
+
+    # Remove python-crypto from RHEL systems
+	if [[ ${packageManagerCommand} == *yum* ]] ; then
+	    ${logInfo} "This is a RHEL system, removing python-crypto..."
+	    run_and_check_status yum -y remove python-crypto
+    fi
+
+	${logInfo} "Verifying AWS CLI install ..."
+	run_and_check_status aws --version
+
+    # Check the results of commands from this script, return error if an error is found
+    for resultCheck in "${resultSet[@]}" ; do
+        if [ ${resultCheck} -ne 0 ] ; then
+            ${logErr} "Non-zero exit code detected, there was a problem with a prerequisite installation."
+            return 3
+        fi
+    done
+
+    ${logInfo} "Successfully installed the pycons3rt prerequisites"
+    return 0
 }
 
 # Main Install Function
@@ -166,11 +239,20 @@ function main() {
         fi
     done
 
+    # Install prerequisites for pycons3rt
+    install_prerequisites
+    if [ $? -ne 0 ] ; then
+        ${logErr} "There was a problem installing prerequisites for pycons3rt"
+        return 5
+    else
+        ${logInfo} "Successfully installed pycons3rt prerequisites"
+    fi
+
     # Ensure the pycons3rt install script can be found
     pycons3rtInstaller="${sourceDir}/scripts/install.sh"
     if [ ! -f ${pycons3rtInstaller} ] ; then
         ${logErr} "File not found: ${pycons3rtInstaller}. pycons3rt install file not found, src may not have been checked out or staged correctly"
-        return 5
+        return 6
     else
         ${logInfo} "Found file: ${pycons3rtInstaller}"
     fi
@@ -183,21 +265,22 @@ function main() {
     # Exit with an error if the checkout did not succeed
     if [ ${installResult} -ne 0 ] ; then
         ${logInfo} "pycons3rt install did not complete successfully and exited with code: ${installResult}"
-        return 6
+        return 7
     else
         ${logInfo} "pycons3rt completed successfully!"
     fi
 
     # Copy the logging config file to the log directory
-    #${logInfo} "Staging the logging config file..."
-    #run_and_check_status cp -f ${sourceDir}/pycons3rt/pycons3rt-logging.conf ${pycons3rtRootDir}/log/
+    ${logInfo} "Staging the logging config file..."
+    run_and_check_status mkdir -p ${confDir}
+    run_and_check_status cp -f ${sourceDir}/pycons3rt/pycons3rt-logging.conf ${confDir}/
 
     # Ensure asset install was successful
     ${logInfo} "Verifying asset installed successfully ..."
     for resultCheck in "${resultSet[@]}" ; do
         if [ ${resultCheck} -ne 0 ] ; then
             ${logErr} "Non-zero exit code found: ${resultCheck}"
-            return 7
+            return 8
         fi
     done
     ${logInfo} "Completed pycons3rt install Successfully!"
