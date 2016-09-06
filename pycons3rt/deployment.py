@@ -101,7 +101,7 @@ class Deployment(object):
             cons3rt_run_dir = os.path.join(os.path.sep, 'opt', 'cons3rt-agent', 'run')
             log.debug('This is Linux, using cons3rt agent run directory: {d}'.format(d=cons3rt_run_dir))
         elif platform.system() == 'Windows':
-            cons3rt_run_dir = os.path.join('C:', 'cons3rt-agent', 'run')
+            cons3rt_run_dir = os.path.join('C:', os.path.sep, 'cons3rt-agent', 'run')
             log.debug('This is Windows, using cons3rt agent run directory: {d}'.format(d=cons3rt_run_dir))
         else:
             msg = 'This is not Windows nor Linux, cannot determine DEPLOYMENT_HOME'
