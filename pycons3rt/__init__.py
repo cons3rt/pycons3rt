@@ -20,6 +20,7 @@ pycons3rt
 :license: ISC, see LICENSE for more details.
 
 """
+from . import osutil
 from . import aliasip
 from . import bash
 from . import cons3rtutil

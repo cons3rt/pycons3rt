@@ -14,9 +14,9 @@ Classes:
 import logging
 import sys
 import os
-import errno
 from logging.config import fileConfig
 
+import osutil
 
 __author__ = 'Joe Yennaco'
 
@@ -29,26 +29,22 @@ class Logify(object):
     pycons3rt project in cons3rt-deploying-cons3rt.
     """
     # Set up the global pycons3rt logger
-    pycons3rt_root = os.path.join(os.path.expanduser('~'), '.cons3rt')
-    log_dir = os.path.join(pycons3rt_root, 'log')
+    log_dir = osutil.get_pycons3rt_log_dir()
+    conf_dir = osutil.get_pycons3rt_conf_dir()
     try:
-        os.makedirs(log_dir)
-    except OSError as e:
-        if e.errno == errno.EEXIST and os.path.isdir(log_dir):
-            pass
-        else:
-            msg = 'Unable to create log directory: {d}'.format(d=log_dir)
-            print msg
-            raise OSError(msg)
-
-    config_file = os.path.join(log_dir, 'pycons3rt-logging.conf')
+        osutil.initialize_pycons3rt_dirs()
+    except OSError as ex:
+        msg = 'Unable to create pycons3rt directories\n{e}'.format(e=str(ex))
+        print msg
+        raise OSError(msg)
+    os.chdir(log_dir)
+    config_file = os.path.join(conf_dir, 'pycons3rt-logging.conf')
     log_file_info = os.path.join(log_dir, 'pycons3rt-info.log')
     log_file_debug = os.path.join(log_dir, 'pycons3rt-debug.log')
     log_file_warn = os.path.join(log_dir, 'pycons3rt-warn.log')
-    os.chdir(log_dir)
     try:
         fileConfig(config_file)
-    except (IOError, OSError):
+    except (IOError, OSError, Exception):
         _, ex, trace = sys.exc_info()
         print 'Logging config file not found: {f}, using standard configuration...\n{e}'.format(
                 f=config_file, e=str(ex))

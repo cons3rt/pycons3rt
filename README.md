@@ -1,7 +1,5 @@
 # pycons3rt Python Library for CONS3RT Assets
 
-Installs the pycons3rt library into the local Python.
-
 Features
 --------
 
@@ -10,6 +8,43 @@ Features
 - Utilities for configuring networking on Linux and on AWS
 - A utility for downloading files from Nexus Artifact Repository
 - A utility for posting to Slack
+
+
+pycons3rt Assets
+---
+
+To create the pycons3rt assets, from the pycons3rt repo root directory, run:
+
+    $ ./scripts/make-assets.sh
+
+This will create the Linux and Windows assets here:
+
+    ./build/asset-pycons3rt-linux.zip
+    ./build/asset-pycons3rt-windows.zip
+
+#### Asset Prerequisites
+
+1. Python (already installed on most Linux distros)
+1. Git
+
+#### Asset Exit Codes (Linux):
+
+* 0 - Success
+* 1 - Could not determine DEPLOYMENT_HOME
+* 2 - deployment properties file not found
+* 3 - Unable to resolve GIT server domain name
+* 4 - Unable to clone git repo after 10 attempts
+* 5 - There was a problem installing prerequisites for pycons3rt
+* 6 - pycons3rt install file not found, src may not have been checked out or staged correctly
+* 7 - pycons3rt install did not complete successfully 
+* 8 - Non-zero exit code found, see the cons3rt agent log for more details
+
+#### Asset Exit Codes (Windows)
+
+1. TBD
+
+
+# pycons3rt library documentation
 
 
 Deployment
