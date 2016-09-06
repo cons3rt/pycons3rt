@@ -14,7 +14,6 @@ Classes:
 import logging
 import sys
 import os
-import errno
 from logging.config import fileConfig
 
 import osutil
@@ -32,17 +31,12 @@ class Logify(object):
     # Set up the global pycons3rt logger
     log_dir = osutil.get_pycons3rt_log_dir()
     conf_dir = osutil.get_pycons3rt_conf_dir()
-    if not os.path.isdir(log_dir):
-        try:
-            os.makedirs(log_dir)
-        except OSError as e:
-            if e.errno == errno.EEXIST and os.path.isdir(log_dir):
-                pass
-            else:
-                msg = 'Unable to create log directory: {d}'.format(d=log_dir)
-                print msg
-                raise OSError(msg)
-
+    try:
+        osutil.initialize_pycons3rt_dirs()
+    except OSError as ex:
+        msg = 'Unable to create pycons3rt directories\n{e}'.format(e=str(ex))
+        print msg
+        raise OSError(msg)
     os.chdir(log_dir)
     config_file = os.path.join(conf_dir, 'pycons3rt-logging.conf')
     log_file_info = os.path.join(log_dir, 'pycons3rt-info.log')

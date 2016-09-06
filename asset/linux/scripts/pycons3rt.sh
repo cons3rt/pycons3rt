@@ -28,8 +28,7 @@ defaultBranch="develop"
 # Root directory for pycons3rt
 pycons3rtRootDir="/root/.pycons3rt"
 
-# Defines the directory where cons3rt-deploying-cons3rt source code will
-# be staged and installed to.
+# Defines the directory for pycons3rt source code
 pycons3rtSourceDir="${pycons3rtRootDir}/src"
 sourceDir="${pycons3rtSourceDir}/pycons3rt"
 
@@ -159,6 +158,24 @@ function install_prerequisites() {
 function main() {
     ${logInfo} "Beginning CONS3RT Configuration Source Code install ..."
     ${logInfo} "Timestamp: ${TIMESTAMP}"
+
+    # Ensure ASSET_DIR exists, if not assume this script exists in ASSET_DIR/scripts
+    if [ -z "${ASSET_DIR}" ] ; then
+        ${logWarn} "ASSET_DIR not found, assuming ASSET_DIR is 1 level above this script ..."
+        SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+        ASSET_DIR=${SCRIPT_DIR}/..
+    fi
+    scriptDir="${ASSET_DIR}/scripts"
+
+    # Ensure the osutil script exists
+    if [ ! -f ${scriptDir}/osutil.py ] ; then
+        ${logErr} "File not found: ${scriptDir}/osutil.py"
+        return 1
+    else
+        ${logInfo} "Found osutil script: ${scriptDir}/osutil.py"
+    fi
+
+    # Run the osutil script to configure directories
 
     # Ensure DEPLOYMENT_HOME exists
     if [ -z ${DEPLOYMENT_HOME} ] ; then
