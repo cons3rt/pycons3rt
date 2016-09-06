@@ -93,6 +93,9 @@ try {
         throw $errMsg
     }
 
+    # Install PIP prerequisites
+    pip install boto3
+
     # Run the pycons3rt setup
     logInfo "Installing pycons3rt..."
     cd $sourceDir
@@ -106,17 +109,18 @@ try {
     }
 
     # Ensure the osutil script was found
-    if ( test-path $sourceDir\osutil.py ) {
-        logInfo "Found the pycons3rt osutil"
+    $osutil = "$sourceDir\pycons3rt\osutil.py"
+    if ( test-path $osutil ) {
+        logInfo "Found the pycons3rt osutil: $osutil"
     }
     else {
-        $errMsg="pycons3rt osutil not found: $sourceDir\osutil.py"
+        $errMsg="pycons3rt osutil not found: $osutil"
         logErr $errMsg
         throw $errMsg
     }
 
     # Run the osutil to configure logging and directories
-    python $sourceDir\osutil.py
+    python $osutil
     $result = $lastexitcode
 
     if ( $result -ne 0 ) {

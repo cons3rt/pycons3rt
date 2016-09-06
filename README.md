@@ -37,15 +37,20 @@ This will create the Linux and Windows assets here:
 * 5 - There was a problem installing prerequisites for pycons3rt
 * 6 - pycons3rt install file not found, src may not have been checked out or staged correctly
 * 7 - pycons3rt install did not complete successfully 
-* 8 - Non-zero exit code found, see the cons3rt agent log for more details
+* 8 - osutil file not found
+* 9 - Non-zero exit code found, see the cons3rt agent log for more details
 
 #### Asset Exit Codes (Windows)
 
-1. TBD
+* 0 - Success
+* 1 - Asset install failed:
+  * pycons3rt install script not found, git clone may not have succeeded
+  * There was a problem setting up pycons3rt
+  * pycons3rt osutil not found
+  * There was a problem running osutil
 
 
-# pycons3rt library documentation
-
+# pycons3rt documentation
 
 Deployment
 ---

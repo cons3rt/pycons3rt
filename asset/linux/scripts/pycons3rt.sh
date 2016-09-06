@@ -129,8 +129,9 @@ function install_prerequisites() {
 
 	# Install Python packages using PIP
 	run_and_check_status pip install awscli
-	run_and_check_status pip install boto
 	run_and_check_status pip install boto3
+
+	# TODO requests prereq should move to the pyBART install asset
 	run_and_check_status pip install requests==2.10.0
 
     # Remove python-crypto from RHEL systems
@@ -287,17 +288,23 @@ function main() {
         ${logInfo} "pycons3rt completed successfully!"
     fi
 
-    # Copy the logging config file to the log directory
-    ${logInfo} "Staging the logging config file..."
-    run_and_check_status mkdir -p ${confDir}
-    run_and_check_status cp -f ${sourceDir}/pycons3rt/pycons3rt-logging.conf ${confDir}/
+    # Run the osutil to configure logging and directories
+    ${logInfo} "Running osutil to configure logging and directories..."
+    osutil="${sourceDir}/pycons3rt/osutil.py"
+    if [ ! -f ${osutil} ] ; then
+        ${logErr} "osutil file not found: ${osutil}"
+        return 8
+    else
+        ${logInfo} "Found osutil: ${osutil}"
+    fi
+    run_and_check_status python ${osutil}
 
     # Ensure asset install was successful
     ${logInfo} "Verifying asset installed successfully ..."
     for resultCheck in "${resultSet[@]}" ; do
         if [ ${resultCheck} -ne 0 ] ; then
             ${logErr} "Non-zero exit code found: ${resultCheck}"
-            return 8
+            return 9
         fi
     done
     ${logInfo} "Completed pycons3rt install Successfully!"
