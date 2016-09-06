@@ -21,10 +21,10 @@ pycons3rt
 
 """
 from . import osutil
-from . import aliasip
 from . import bash
-from . import cons3rtutil
+from . import aliasip
 from . import deployment
+from . import cons3rtutil
 from . import dyndict
 from . import logify
 from . import nexus
@@ -40,4 +40,4 @@ __author__ = 'Joe Yennaco'
 __author_email__ = 'joe.yennaco@jackpinetech.com'
 __license__ = 'DoD Community Source Usage Agreement Version 1.1'
 __copyright__ = 'Copyright 2016 by Jackpine Technologies Corporation'
-__all__ = ['aliasip', 'bash', 'cons3rtutil', 'deployment', 'dyndict', 'logify', 'nexus', 'slack']
+__all__ = ['osutil', 'bash', 'aliasip', 'deployment', 'cons3rtutil', 'dyndict', 'logify', 'nexus', 'slack']

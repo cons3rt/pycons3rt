@@ -26,9 +26,9 @@ from bash import service_network_restart
 from bash import CommandError
 from logify import Logify
 
-from pycons3rt.awsapi.metadata import is_aws
-from pycons3rt.awsapi.ec2util import EC2Util
-from pycons3rt.awsapi.ec2util import EC2UtilError
+from awsapi.metadata import is_aws
+from awsapi.ec2util import EC2Util
+from awsapi.ec2util import EC2UtilError
 
 __author__ = 'Joe Yennaco'
 

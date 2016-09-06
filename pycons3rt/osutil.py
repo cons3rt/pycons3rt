@@ -11,13 +11,8 @@ import shutil
 import sys
 import errno
 import traceback
-import subprocess
 
 __author__ = 'Joe Yennaco'
-
-
-# pycons3rt clone URL
-pycons3rt_git_url = 'git@github.com:cons3rt/pycons3rt.git'
 
 
 def get_pycons3rt_home_dir():
@@ -94,36 +89,6 @@ def initialize_pycons3rt_dirs():
                 msg = 'Unable to create directory: {d}'.format(d=pycons3rt_dir)
                 print msg
                 raise OSError(msg)
-
-
-def get_pycons3rt_source(branch='master'):
-    """Clones the pycons3rt source
-
-    :return: None
-    :raises: OSError
-    """
-    os.environ['HOME'] = os.path.expanduser('~')
-    command = ['git', 'clone', '-b', branch, pycons3rt_git_url, get_pycons3rt_src_dir()]
-    try:
-        result = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT
-        )
-        std_out = result.communicate()
-        code = result.poll()
-    except (ValueError, TypeError, subprocess.CalledProcessError):
-        _, ex, trace = sys.exc_info()
-        msg = 'Unable to clone pycons3rt git repo with command: {c}'.format(c=command)
-        print msg
-        raise OSError(msg)
-    if code != 0:
-        msg = 'git clone command {g} returned code {c} with output:\n{o}'.format(
-            g=command, c=code, o=std_out)
-        print msg
-        raise OSError(msg)
-    else:
-        print 'Successfully cloned git repo: {r}'.format(r=pycons3rt_git_url)
 
 
 def main():

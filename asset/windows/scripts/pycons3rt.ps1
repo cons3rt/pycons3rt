@@ -71,6 +71,7 @@ try {
         else {
             logInfo "Found PYCONS3RT_BRANCH set to: $branch"
         }
+    }
     else {
         logInfo "Deployment properties file not found, using default branch: $defaultBranch"
         $branch = $defaultBranch
