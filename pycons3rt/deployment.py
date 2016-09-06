@@ -19,6 +19,7 @@ import os
 import sys
 import traceback
 import re
+import platform
 
 from logify import Logify
 from bash import get_ip_addresses
@@ -69,9 +70,11 @@ class Deployment(object):
         self.deployment_home = ''
         self.cons3rt_role_name = ''
         self.asset_dir = ''
-        self.set_deployment_home()
-        self.validate_deployment_properties()
-        self.read_deployment_properties()
+        try:
+            self.set_deployment_home()
+            self.read_deployment_properties()
+        except DeploymentError:
+            raise
         self.set_cons3rt_role_name()
         self.set_asset_dir()
 
@@ -88,49 +91,50 @@ class Deployment(object):
         try:
             self.deployment_home = os.environ['DEPLOYMENT_HOME']
         except KeyError:
-            log.warn('DEPLOYMENT_HOME environment variable is not set')
+            log.warn('DEPLOYMENT_HOME environment variable is not set, attempting to set it...')
         else:
-            log.info('Found DEPLOYMENT_HOME environment variable set to: %s',
-                     self.deployment_home)
+            log.info('Found DEPLOYMENT_HOME environment variable set to: {d}'.format(d=self.deployment_home))
             return
 
         log.info('Attempting to determine deployment home...')
-        cons3rt_run_dir = '/opt/cons3rt-agent/run'
-        if os.path.isdir(cons3rt_run_dir):
-            run_dir_contents = os.listdir(cons3rt_run_dir)
-            results = []
-            for item in run_dir_contents:
-                if 'Deployment' in item:
-                    results.append(item)
-            if len(results) != 1:
-                msg = 'Could not find deployment home in the cons3rt run ' \
-                      'directory, deployment home cannot be set'
-                log.error(msg)
-                raise DeploymentError(msg)
-            else:
-                self.deployment_home = cons3rt_run_dir + '/' + results[0]
-                return
+        if platform.system() == 'Linux':
+            cons3rt_run_dir = '/opt/cons3rt-agent/run'
+            log.debug('This is Linux, using cons3rt agent run directory: {d}'.format(d=cons3rt_run_dir))
+        elif platform.system() == 'Windows':
+            cons3rt_run_dir = 'C:\cons3rt-agent\run'
+            log.debug('This is Windows, using cons3rt agent run directory: {d}'.format(d=cons3rt_run_dir))
         else:
-            msg = 'Could not find the cons3rt run directory, deployment home ' \
-                  'cannot be set'
-            raise DeploymentError(msg)
-
-    def validate_deployment_properties(self):
-        """Validates the deployment properties file can be found
-
-        This method uses DEPLOYMENT_HOME to find the deployment
-        properties file.
-
-        :return: None
-        """
-        log = logging.getLogger(self.cls_logger + '.validate_deployment_properties')
-        self.properties_file = self.deployment_home + '/deployment.properties'
-        if not os.path.isfile(self.properties_file):
-            msg = 'Deployment properties file not found: {file}'.format(file=self.properties_file)
+            msg = 'This is not Windows nor Linux, cannot determine DEPLOYMENT_HOME'
             log.error(msg)
             raise DeploymentError(msg)
-        log.info('Found deployment properties file: %s',
-                 self.properties_file)
+
+        # Ensure the run directory can be found
+        if not os.path.isdir(cons3rt_run_dir):
+            msg = 'Could not find the cons3rt run directory, DEPLOYMENT_HOME cannot be set'
+            log.error(msg)
+            raise DeploymentError(msg)
+
+        run_dir_contents = os.listdir(cons3rt_run_dir)
+        results = []
+        for item in run_dir_contents:
+            if 'Deployment' in item:
+                results.append(item)
+        if len(results) != 1:
+            msg = 'Could not find deployment home in the cons3rt run directory, deployment home cannot be set'
+            log.error(msg)
+            raise DeploymentError(msg)
+
+        # Ensure the Deployment Home is a directory
+        candidate_deployment_home = os.path.join(cons3rt_run_dir, results[0])
+        if not os.path.isdir(candidate_deployment_home):
+            msg = 'The candidate deployment home is not a valid directory: {d}'.format(d=candidate_deployment_home)
+            log.error(msg)
+            raise DeploymentError(msg)
+
+        # Ensure the deployment properties file can be found
+        self.deployment_home = candidate_deployment_home
+        os.environ['DEPLOYMENT_HOME'] = self.deployment_home
+        log.info('Set DEPLOYMENT_HOME in the environment to: {d}'.format(d=self.deployment_home))
 
     def read_deployment_properties(self):
         """Reads the deployment properties file
@@ -139,9 +143,19 @@ class Deployment(object):
         "properties" dictionary object.
 
         :return: None
+        :raises: DeploymentError
         """
         log = logging.getLogger(self.cls_logger + '.read_deployment_properties')
-        log.info('Reading in deployment properties...')
+
+        # Ensure deployment properties file exists
+        self.properties_file = os.path.join(self.deployment_home, 'deployment.properties')
+        if not os.path.isfile(self.properties_file):
+            msg = 'Deployment properties file not found: {f}'.format(f=self.properties_file)
+            log.error(msg)
+            raise DeploymentError(msg)
+        log.info('Found deployment properties file: {f}'.format(f=self.properties_file))
+
+        log.info('Reading deployment properties...')
         try:
             f = open(self.properties_file)
         except IOError:
@@ -173,7 +187,7 @@ class Deployment(object):
                         self.properties[prop_name] = prop_value
                 else:
                     log.debug('Skipping line that did not split into 2 part on an equal sign...')
-        log.info('Deployment properties have been read in.')
+        log.info('Successfully read in deployment properties')
 
     def get_property(self, regex):
         """Gets the name of a specific property
@@ -235,41 +249,55 @@ class Deployment(object):
             return None
 
     def set_cons3rt_role_name(self):
-        """Returns the CONS3RT_ROLE_NAME for this system
+        """Set the cons3rt_role_name member for this system
+
+        :return: None
+        :raises: DeploymentError
+        """
+        log = logging.getLogger(self.cls_logger + '.set_cons3rt_role_name')
+        try:
+            self.cons3rt_role_name = os.environ['CONS3RT_ROLE_NAME']
+        except KeyError:
+            log.warn('CONS3RT_ROLE_NAME is not set, attempting to determine it from deployment properties...')
+        else:
+            log.info('Found environment variable CONS3RT_ROLE_NAME: {r}'.format(r=self.cons3rt_role_name))
+            return
+
+        if platform.system() == 'Linux':
+            log.info('Attempting to determine CONS3RT_ROLE_NAME on Linux...')
+            try:
+                self.determine_cons3rt_role_name_linux()
+            except DeploymentError:
+                raise
+        else:
+            log.warn('Unable to determine CONS3RT_ROLE_NAME on this System')
+
+    def determine_cons3rt_role_name_linux(self):
+        """Determines the CONS3RT_ROLE_NAME for this Linux system, and
+        Set the cons3rt_role_name member for this system
 
         This method determines the CONS3RT_ROLE_NAME for this system
         in the deployment by first checking for the environment
         variable, if not set, determining the value from the
         deployment properties.
 
-        :return: None.
+        :return: None
+        :raises: DeploymentError
         """
-        log = logging.getLogger(self.cls_logger + '.set_cons3rt_role_name')
-        try:
-            self.cons3rt_role_name = os.environ['CONS3RT_ROLE_NAME']
-        except KeyError:
-            log.warn('CONS3RT_ROLE_NAME is not set, attempting to determine '
-                     'if from deployment properties...')
-        else:
-            log.info('Found environment variable CONS3RT_ROLE_NAME: %s',
-                     self.cons3rt_role_name)
-            return
-        """
-        If the environment variable was not set try to get it from
-        Deployment properties
-        """
+        log = logging.getLogger(self.cls_logger + '.determine_cons3rt_role_name_linux')
+
+        # Determine IP addresses for this system
         log.info('Determining the IPv4 addresses for this system...')
         try:
             ip_addresses = get_ip_addresses()
         except CommandError:
             _, ex, trace = sys.exc_info()
-            msg = 'Unable to get the IP address of this system, thus ' \
-                  'cannot determine the CONS3RT_ROLE_NAME\n{e}'. \
-                format(e=str(ex))
+            msg = 'Unable to get the IP address of this system, thus cannot determine the ' \
+                  'CONS3RT_ROLE_NAME\n{e}'.format(e=str(ex))
             log.error(msg)
             raise DeploymentError, msg, trace
         else:
-            log.info('Found IP addresses: %s', ip_addresses)
+            log.info('Found IP addresses: {a}'.format(a=ip_addresses))
 
         log.info('Trying to determine IP address for eth0...')
         try:
@@ -282,56 +310,42 @@ class Deployment(object):
             log.error(msg)
             raise DeploymentError, msg, trace
         else:
-            log.info('Found IP address for eth0: %s', ip_address)
+            log.info('Found IP address for eth0: {i}'.format(i=ip_address))
 
-        pattern = '^cons3rt\.fap\.deployment\.machine.*0.internalIp=' \
-                  + ip_address + '$'
+        pattern = '^cons3rt\.fap\.deployment\.machine.*0.internalIp=' + ip_address + '$'
         try:
             f = open(self.properties_file)
         except IOError:
             _, ex, trace = sys.exc_info()
-            msg = 'Could not open file {file}'.format(
-                file=self.properties_file)
+            msg = 'Could not open file {f}'.format(f=self.properties_file)
             log.error(msg)
             raise DeploymentError, msg, trace
         prop_list_matched = []
-        log.debug('Searching for deployment properties matching pattern: %s',
-                  pattern)
+        log.debug('Searching for deployment properties matching pattern: {p}'.format(p=pattern))
         for line in f:
-            log.debug(
-                'Processing deployment properties file line: %s', line)
+            log.debug('Processing deployment properties file line: {l}'.format(l=line))
             if line.startswith('#'):
                 continue
             elif '=' in line:
                 match = re.search(pattern, line)
                 if match:
-                    log.debug('Found matching prop: %s', line)
+                    log.debug('Found matching prop: {l}'.format(l=line))
                     prop_list_matched.append(line)
-        log.debug('Number of matching properties found: %s', len(prop_list_matched))
+        log.debug('Number of matching properties found: {n}'.format(n=len(prop_list_matched)))
         if len(prop_list_matched) == 1:
             prop_parts = prop_list_matched[0].split('.')
             if len(prop_parts) > 5:
                 self.cons3rt_role_name = prop_parts[4]
-                log.info('Found CONS3RT_ROLE_NAME from deployment properties: '
-                         '%s', self.cons3rt_role_name)
-                log.info('Adding environment variable...')
-                try:
-                    with open('/etc/bashrc', 'a') as f:
-                        out_str = 'CONS3RT_ROLE_NAME="' + \
-                                  self.cons3rt_role_name + '"\n'
-                        log.info('Adding entry to /etc/bashrc: %s', out_str)
-                        f.write(out_str)
-                except(IOError, OSError) as e:
-                    msg = 'Unable to write to /etc/bashrc:\n{e}'.format(e=e)
-                    log.error(msg)
+                log.info('Found CONS3RT_ROLE_NAME from deployment properties: {c}'.format(c=self.cons3rt_role_name))
+                log.info('Adding CONS3RT_ROLE_NAME to the current environment...')
+                os.environ['CONS3RT_ROLE_NAME'] = self.cons3rt_role_name
                 return
             else:
                 log.error('Property found was not formatted as expected: %s',
                           prop_parts)
         else:
             log.error('Did not find a unique matching deployment property')
-        msg = 'Could not determine CONS3RT_ROLE_NAME from deployment ' \
-              'properties'
+        msg = 'Could not determine CONS3RT_ROLE_NAME from deployment properties'
         log.error(msg)
         raise DeploymentError(msg)
 
@@ -350,7 +364,7 @@ class Deployment(object):
         except KeyError:
             log.warn('Environment variable ASSET_DIR is not set!')
         else:
-            log.info('Found environment variable ASSET_DIR: %s', self.asset_dir)
+            log.info('Found environment variable ASSET_DIR: {a}'.format(a=self.asset_dir))
 
 
 def main():
