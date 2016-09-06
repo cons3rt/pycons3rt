@@ -22,13 +22,10 @@ def get_pycons3rt_home_dir():
     :raises: OSError
     """
     if platform.system() == 'Linux':
-        print 'Configuring pycons3rt for Linux...'
         return os.path.join(os.path.sep, 'etc', 'pycons3rt')
     elif platform.system() == 'Windows':
-        print 'Configuing pycons3rt for Windows...'
         return os.path.join('C:', os.path.sep, 'pycons3rt')
     elif platform.system() == 'Darwin':
-        print 'Configuring pycons3rt for Mac...'
         return os.path.join(os.path.expanduser('~'), '.pycons3rt')
     else:
         raise OSError('Unsupported Operating System')
