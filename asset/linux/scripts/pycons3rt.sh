@@ -23,7 +23,7 @@ gitServerDomainName="github.com"
 gitUrl="https://${gitServerDomainName}/cons3rt/pycons3rt.git"
 
 # Default Branch to clone
-defaultBranch="develop"
+defaultBranch="master"
 
 # Root directory for pycons3rt
 pycons3rtRootDir="/root/.pycons3rt"
@@ -157,8 +157,7 @@ function install_prerequisites() {
 
 # Main Install Function
 function main() {
-    ${logInfo} "Beginning CONS3RT Configuration Source Code install ..."
-    ${logInfo} "Timestamp: ${TIMESTAMP}"
+    ${logInfo} "Beginning ${logTag} install at: ${TIMESTAMP}"
 
     # Ensure ASSET_DIR exists, if not assume this script exists in ASSET_DIR/scripts
     if [ -z "${ASSET_DIR}" ] ; then
@@ -167,16 +166,6 @@ function main() {
         ASSET_DIR=${SCRIPT_DIR}/..
     fi
     scriptDir="${ASSET_DIR}/scripts"
-
-    # Ensure the osutil script exists
-    if [ ! -f ${scriptDir}/osutil.py ] ; then
-        ${logErr} "File not found: ${scriptDir}/osutil.py"
-        return 1
-    else
-        ${logInfo} "Found osutil script: ${scriptDir}/osutil.py"
-    fi
-
-    # Run the osutil script to configure directories
 
     # Ensure DEPLOYMENT_HOME exists
     if [ -z ${DEPLOYMENT_HOME} ] ; then
