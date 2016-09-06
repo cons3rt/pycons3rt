@@ -74,9 +74,9 @@ def initialize_pycons3rt_dirs():
                           get_pycons3rt_conf_dir(),
                           get_pycons3rt_log_dir(),
                           get_pycons3rt_src_dir()]:
-        print 'Creating directory: {d}'.format(d=pycons3rt_dir)
         if os.path.isdir(pycons3rt_dir):
             continue
+        print 'Creating directory: {d}'.format(d=pycons3rt_dir)
         try:
             os.makedirs(pycons3rt_dir)
         except OSError as e:
