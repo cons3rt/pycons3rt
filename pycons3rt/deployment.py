@@ -158,7 +158,7 @@ class Deployment(object):
         log.info('Reading deployment properties...')
         try:
             f = open(self.properties_file)
-        except IOError:
+        except (IOError, OSError):
             _, ex, trace = sys.exc_info()
             msg = 'Could not open file {file} to read property: {prop}'.format(
                 file=self.properties_file,
