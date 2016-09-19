@@ -793,7 +793,7 @@ def get_ec2_client(region_name=None, aws_access_key_id=None, aws_secret_access_k
         log.error(msg)
         raise AWSAPIError, msg, trace
     else:
-        log.info('Successfully created an EC2 client')
+        log.debug('Successfully created an EC2 client')
         return client
 
 
