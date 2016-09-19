@@ -35,16 +35,16 @@ metadata_url = 'http://169.254.169.254/latest/meta-data/'
 def is_aws():
     """Determines if this system is on AWS
 
-    :return: bool
+    :return: bool True if this system is running on AWS
     """
     log = logging.getLogger(mod_logger + '.is_aws')
-    log.info('Querying URL: %s', metadata_url)
+    log.info('Querying AWS meta data URL: {u}'.format(u=metadata_url))
 
+    # Query the AWS meta data URL
     try:
         response = urllib.urlopen(metadata_url)
     except(IOError, OSError) as ex:
-        log.info('Unable to query URL: {u}, assuming this is NOT AWS\{e}'.format(
-                u=metadata_url, e=ex))
+        log.info('Unable to query the AWS meta data URL, this system is NOT running on AWS')
         return False
 
     # Check the code
