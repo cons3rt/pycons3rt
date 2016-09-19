@@ -22,6 +22,7 @@ except ImportError:
 
 from pycons3rt.bash import get_ip_addresses
 from pycons3rt.logify import Logify
+from pycons3rt.osutil import get_os
 
 from awslibs import AWSAPIError
 from metadata import is_aws
@@ -43,7 +44,6 @@ class EC2UtilError(Exception):
 
 class EC2Util(object):
     """Utility for interacting with the AWS API
-
     """
     def __init__(self, region_name=None, aws_access_key_id=None, aws_secret_access_key=None):
         self.cls_logger = mod_logger + '.EC2Util'
@@ -56,7 +56,10 @@ class EC2Util(object):
             msg = 'Unable to create an EC2 client.\n{e}'.format(e=str(ex))
             log.error(msg)
             raise EC2UtilError, msg, trace
-        self.is_aws = is_aws()
+        if get_os() != 'Darwin':
+            self.is_aws = is_aws()
+        else:
+            self.is_aws = False
         if self.is_aws:
             self.instance_id = get_instance_id()
         else:
