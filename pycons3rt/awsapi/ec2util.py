@@ -56,8 +56,11 @@ class EC2Util(object):
             msg = 'Unable to create an EC2 client.\n{e}'.format(e=str(ex))
             log.error(msg)
             raise EC2UtilError, msg, trace
-        self.instance_id = get_instance_id()
         self.is_aws = is_aws()
+        if self.is_aws:
+            self.instance_id = get_instance_id()
+        else:
+            self.instance_id = None
         if self.instance_id and self.is_aws:
             self.vpc_id = get_vpc_id_from_mac_address()
         else:
