@@ -276,8 +276,10 @@ class EC2Util(object):
         log.info('Verifying the elastic IP address was allocated and is available '
                  'for use...')
         ready = False
-        num_checks = 60
-        for _ in range(num_checks):
+        verification_timer = [2]*60 + [5]*60 + [10]*18
+        num_checks = len(verification_timer)
+        for i in range(0, num_checks):
+            wait_time = verification_timer[i]
             try:
                 self.client.describe_addresses(
                         DryRun=False,
@@ -285,18 +287,19 @@ class EC2Util(object):
                 )
             except ClientError:
                 _, ex, trace = sys.exc_info()
-                log.info('Elastic IP address {a} is not available for use, trying again in 1 sec...\n{e}'.format(
-                        a=allocation_id, e=str(ex)))
-                time.sleep(1)
+                log.info('Elastic IP address {p} with Allocation ID {a} is not available for use, trying again in '
+                         '{w} sec...\n{e}'.format(p=public_ip, a=allocation_id, w=wait_time, e=str(ex)))
+                time.sleep(wait_time)
             else:
-                log.info('Elastic IP {a} is available for use'.format(a=allocation_id))
+                log.info('Elastic IP {p} with Allocation ID {a} is available for use'.format(
+                    p=public_ip, a=allocation_id))
                 ready = True
                 break
         if ready:
             return {'AllocationId': allocation_id, 'PublicIp': public_ip}
         else:
-            msg = 'Unable to verify existence of new elastic IP: {a}'. \
-                format(a=allocation_id)
+            msg = 'Unable to verify existence of new Elastic IP {p} with Allocation ID: {a}'. \
+                format(p=public_ip, a=allocation_id)
             log.error(msg)
             raise EC2UtilError(msg)
 
