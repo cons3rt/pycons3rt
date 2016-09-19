@@ -15,6 +15,14 @@ import traceback
 __author__ = 'Joe Yennaco'
 
 
+def get_os():
+    """Returns the OS based on platform.sysyen
+
+    :return: (str) OS family
+    """
+    return platform.system()
+
+
 def get_pycons3rt_home_dir():
     """Returns the pycons3rt home directory based on OS
 
