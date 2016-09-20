@@ -66,12 +66,10 @@ def run_command(command, timeout_sec=3600.0):
         log.debug('Opening subprocess...')
         result = subprocess.Popen(
             command,
-            bufsize=-1,
+            bufsize=1,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
         )
-        code = result.poll()
-        log.debug('Poll: {p}'.format(p=code))
         log.debug('Setting up process kill timer at {s} sec...'.format(s=timeout_sec))
         kill_proc = process_killer
         timer = Timer(timeout_sec, kill_proc, [result])
