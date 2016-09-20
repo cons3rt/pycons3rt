@@ -61,16 +61,29 @@ def run_command(command, timeout_sec=3600.0):
     command_str = ' '.join(command)
     timer = None
     log.debug('Running command: {c}'.format(c=command_str))
+    output_collector = ''
     try:
+        log.debug('Opening subprocess...')
         result = subprocess.Popen(
             command,
+            bufsize=-1,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
         )
+        code = result.poll()
+        log.debug('Poll: {p}'.format(p=code))
+        log.debug('Setting up process kill timer at {s} sec...'.format(s=timeout_sec))
         kill_proc = process_killer
         timer = Timer(timeout_sec, kill_proc, [result])
         timer.start()
-        std_out = result.communicate()
+        log.debug('Collecting and logging output...')
+        for line in iter(result.stdout.readline, b''):
+            output_collector += line.rstrip() + '\n'
+            print(">>> " + line.rstrip())
+        log.debug('Waiting for process completion...')
+        (stdout, stderr) = result.communicate()
+        output_collector += stdout + '\n'
+        log.debug('Collecting the exit code...')
         code = result.poll()
     except ValueError:
         _, ex, trace = sys.exc_info()
@@ -93,10 +106,12 @@ def run_command(command, timeout_sec=3600.0):
         raise CommandError, msg, trace
     finally:
         if timer is not None:
+            log.debug('Cancelling the timer...')
             timer.cancel()
-
+        else:
+            log.debug('No need to cancel the timer.')
     # Collect exit code and output for return
-    output = std_out[0].strip()
+    output = output_collector.strip()
     try:
         code = int(code)
     except ValueError:
@@ -1166,7 +1181,10 @@ def main():
     # source('/root/.bash_profile')
     # yum_install(['httpd', 'git'])
     # yum_install(['httpd', 'git'], dest_dir='/tmp/test/test', downloadonly=True)
-    sed('/Users/yennaco/Downloads/homer_testing/network', '^HOSTNAME.*', 'HOSTNAME=foo.joe')
+    #sed('/Users/yennaco/Downloads/homer_testing/network', '^HOSTNAME.*', 'HOSTNAME=foo.joe')
+    test_script = '/Users/yennaco/Downloads/homer/script.sh'
+    results = run_command([test_script], timeout_sec=1000)
+    #print 'run_command exited with code: {c}\n{o}'.format(c=results['code'], o=results['output'])
 
 
 if __name__ == '__main__':
