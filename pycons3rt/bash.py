@@ -89,8 +89,7 @@ def run_command(command, timeout_sec=3600.0):
                 output_collector += line.rstrip() + '\n'
                 print(">>> " + line.rstrip())
         log.debug('Waiting for process completion...')
-        (stdout, stderr) = subproc.communicate()
-        output_collector += stdout + '\n'
+        subproc.wait()
         log.debug('Collecting the exit code...')
         code = subproc.poll()
     except ValueError:
