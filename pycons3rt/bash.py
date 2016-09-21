@@ -17,7 +17,8 @@ import zipfile
 import socket
 import contextlib
 import time
-from threading import Timer
+from threading import Timer, Thread
+from Queue import Queue, Empty
 
 from logify import Logify
 
@@ -43,6 +44,12 @@ def process_killer(p):
     return p.kill()
 
 
+def enqueue_output(out, queue):
+    for line in iter(out.readline, b''):
+        queue.put(line)
+    out.close()
+
+
 def run_command(command, timeout_sec=3600.0):
     """Runs a command using the subprocess module
 
@@ -64,25 +71,28 @@ def run_command(command, timeout_sec=3600.0):
     output_collector = ''
     try:
         log.debug('Opening subprocess...')
-        result = subprocess.Popen(
+        subproc = subprocess.Popen(
             command,
-            bufsize=-1,
+            bufsize=1,
+            stdin=open(os.devnull),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
         )
-        log.debug('Setting up process kill timer at {s} sec...'.format(s=timeout_sec))
+        log.debug('Opened subprocess wih PID: {p}'.format(p=subproc.pid))
+        log.debug('Setting up process kill timer for PID {p} at {s} sec...'.format(p=subproc.pid, s=timeout_sec))
         kill_proc = process_killer
-        timer = Timer(timeout_sec, kill_proc, [result])
+        timer = Timer(timeout_sec, kill_proc, [subproc])
         timer.start()
         log.debug('Collecting and logging output...')
-        for line in iter(result.stdout.readline, b''):
-            output_collector += line.rstrip() + '\n'
-            print(">>> " + line.rstrip())
+        with subproc.stdout:
+            for line in iter(subproc.stdout.readline, b''):
+                output_collector += line.rstrip() + '\n'
+                print(">>> " + line.rstrip())
         log.debug('Waiting for process completion...')
-        (stdout, stderr) = result.communicate()
+        (stdout, stderr) = subproc.communicate()
         output_collector += stdout + '\n'
         log.debug('Collecting the exit code...')
-        code = result.poll()
+        code = subproc.poll()
     except ValueError:
         _, ex, trace = sys.exc_info()
         msg = 'Bad command supplied: {c}\n{e}'.format(
@@ -90,7 +100,7 @@ def run_command(command, timeout_sec=3600.0):
         )
         log.error(msg)
         raise CommandError, msg, trace
-    except OSError:
+    except (OSError, IOError):
         _, ex, trace = sys.exc_info()
         msg = 'There was a problem running command: {c}\n{e}'.format(
             c=command_str, e=str(ex))
