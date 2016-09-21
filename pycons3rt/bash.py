@@ -66,7 +66,7 @@ def run_command(command, timeout_sec=3600.0):
         log.debug('Opening subprocess...')
         result = subprocess.Popen(
             command,
-            bufsize=1,
+            bufsize=-1,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
         )
