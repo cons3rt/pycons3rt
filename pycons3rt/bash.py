@@ -50,12 +50,13 @@ def enqueue_output(out, queue):
     out.close()
 
 
-def run_command(command, timeout_sec=3600.0):
+def run_command(command, timeout_sec=3600.0, output=True):
     """Runs a command using the subprocess module
 
     :param command: List containing the command and all args
     :param timeout_sec (float) seconds to wait before killing
         the command.
+    :param output (bool) True collects output, False ignores output
     :return: Dict containing the command output and return code
     :raises CommandError
     """
@@ -64,6 +65,12 @@ def run_command(command, timeout_sec=3600.0):
         msg = 'command arg must be a list'
         log.error(msg)
         raise CommandError(msg)
+    if output:
+        subproc_stdout = subprocess.PIPE
+        subproc_stderr = subprocess.STDOUT
+    else:
+        subproc_stdout = None
+        subproc_stderr = None
     command = map(str, command)
     command_str = ' '.join(command)
     timer = None
@@ -75,19 +82,20 @@ def run_command(command, timeout_sec=3600.0):
             command,
             bufsize=1,
             stdin=open(os.devnull),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT
+            stdout=subproc_stdout,
+            stderr=subproc_stderr
         )
         log.debug('Opened subprocess wih PID: {p}'.format(p=subproc.pid))
         log.debug('Setting up process kill timer for PID {p} at {s} sec...'.format(p=subproc.pid, s=timeout_sec))
         kill_proc = process_killer
         timer = Timer(timeout_sec, kill_proc, [subproc])
         timer.start()
-        log.debug('Collecting and logging output...')
-        with subproc.stdout:
-            for line in iter(subproc.stdout.readline, b''):
-                output_collector += line.rstrip() + '\n'
-                print(">>> " + line.rstrip())
+        if output:
+            log.debug('Collecting and logging output...')
+            with subproc.stdout:
+                for line in iter(subproc.stdout.readline, b''):
+                    output_collector += line.rstrip() + '\n'
+                    print(">>> " + line.rstrip())
         log.debug('Waiting for process completion...')
         subproc.wait()
         log.debug('Collecting the exit code...')
