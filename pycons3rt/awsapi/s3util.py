@@ -377,6 +377,11 @@ def download(download_info):
     # Set the destination
     destination = os.path.join(dest_dir, filename)
 
+    # Return if the destination file was already downloaded
+    if os.path.isfile(destination):
+        log.info('File already downloaded: {d}'.format(d=destination))
+        return destination
+
     # Attempt the download
     log.info('Attempting to download %s from bucket %s to destination %s',
              key, bucket_name, destination)
