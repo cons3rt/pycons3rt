@@ -52,6 +52,61 @@ This will create the Linux and Windows assets here:
 
 # pycons3rt documentation
 
+Logify
+---
+
+To use the Logging framework Logify: ::
+
+    import logging
+    from pycons3rt.logify import Logify
+
+Set up a Module logger:
+
+    mod_logger = Logify.get_name() + '.module_name'
+    log = logging.getLogger(mod_logger)
+    
+Set up a Class logger: 
+    
+    self.cls_logger = mod_logger + '.ClassName'
+    log = logging.getLogger(self.cls_logger)
+
+Set up a Class Method logger:
+    
+    log = logging.getLogger(self.cls_logger + '.method_name')
+
+Use the logging framework: 
+ 
+    log.debug('This is a line of DEBUG')
+    log.info('This is a line of INFO')
+    log.warn('This is a line of WARN')
+    log.error('This is a line of ERROR')
+
+Log files are output to ~/.pycons3rt/log, and INFO level is printed to stdout.
+
+Logging Example:
+
+    from pycons3rt.logify import Logify
+    
+    mod_logger = Logify.get_name() + '.your_module'
+    
+    # Then use in a function or class:
+    
+    class MyClass(object):
+        def __init__(self, dep=None):
+            self.cls_logger = mod_logger + '.MyCLass'
+    	def class_method(self):
+    		log = logging.getLogger(self.cls_logger + '.class_method')
+    		log.info('Class Method Logging')
+    
+    def main():
+        log = logging.getLogger(mod_logger + '.main')
+        log.debug('DEBUG')
+    	log.info('INFO')
+    	log.warn('WARN')
+    	log.error('ERROR')
+
+
+
 Deployment
 ---
 
@@ -110,38 +165,6 @@ Example usage:
 
     cons3rt_user = dep.get_value('cons3rt.user')
         
-
-Logify
----
-
-To use the Logging framework Logify: ::
-
-    import logging
-    from pycons3rt.logify import Logify
-
-Set up a Module logger:
-
-    mod_logger = Logify.get_name() + '.module_name'
-    log = logging.getLogger(mod_logger)
-    
-Set up a Class logger: 
-    
-    self.cls_logger = mod_logger + '.ClassName'
-    log = logging.getLogger(self.cls_logger)
-
-Set up a Class Method logger:
-    
-    log = logging.getLogger(self.cls_logger + '.method_name')
-
-Use the logging framework: 
- 
-    log.debug('This is a line of DEBUG')
-    log.info('This is a line of INFO')
-    log.warn('This is a line of WARN')
-    log.error('This is a line of ERROR')
-
-Log files are output to ~/.cons3rt/log, and INFO level is printed to stdout.
-
 
 Slack
 ---
