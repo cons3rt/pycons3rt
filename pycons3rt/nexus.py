@@ -8,7 +8,7 @@ repository.
 """
 import logging
 import os
-import urllib
+import requests
 
 __author__ = 'Joe Yennaco'
 
@@ -17,7 +17,7 @@ try:
     from logify import Logify
 except ImportError:
     Logify = None
-    mod_logger = 'slack'
+    mod_logger = 'nexus'
 else:
     mod_logger = Logify.get_name() + '.nexus'
 
@@ -126,6 +126,25 @@ def get_artifact(**kwargs):
 
     query_url = nexus_url + '?' + params
     log.info('Fetching artifact using URL:  %s', query_url)
+
+    nexus_response = requests.get(query_url, stream=True)
+
+    if nexus_response.status_code != 200:
+        msg = 'Nexus request returned code {c}, unable to download from Nexus using query URL: {u}'.format(
+            u=query_url, c=nexus_response.status_code)
+        log.error(msg)
+        raise RuntimeError(msg)
+
+    # Download the content from the response
+    file_name = nexus_response.url.split('/')[-1]
+    download_file = destination_dir + '/' + file_name
+    log.debug('Saving file: {d}'.format(d=download_file))
+    with open(file_name, 'wb') as f:
+        for chunk in nexus_response.iter_content(chunk_size=1024):
+            if chunk:
+                f.write(chunk)
+    log.info('Saved file: {d}'.format(d=download_file))
+    """
     try:
         nexus_response = urllib.urlopen(query_url)
     except(IOError, OSError) as e:
@@ -141,6 +160,7 @@ def get_artifact(**kwargs):
         raise ValueError(msg)
     else:
         log.info('Query returned code 200!')
+
 
     # Pull data from Nexus response
     meta = nexus_response.info()
@@ -168,6 +188,7 @@ def get_artifact(**kwargs):
         status += chr(8)*(len(status)+1)
         # print status,
     f.close()
+    """
 
 
 def main():
