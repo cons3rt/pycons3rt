@@ -139,7 +139,7 @@ def get_artifact(**kwargs):
     file_name = nexus_response.url.split('/')[-1]
     download_file = destination_dir + '/' + file_name
     log.debug('Saving file: {d}'.format(d=download_file))
-    with open(file_name, 'wb') as f:
+    with open(download_file, 'wb') as f:
         for chunk in nexus_response.iter_content(chunk_size=1024):
             if chunk:
                 f.write(chunk)
