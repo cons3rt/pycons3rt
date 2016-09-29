@@ -5,6 +5,12 @@
 This module provides utilities for running various 
 systemd/systemctl commands.
 
+Usage:
+
+from pycons3rt import systemd
+systemctl = systemd.Systemd()
+systemctl.start('sshd.service')
+
 """
 import sys
 import logging
