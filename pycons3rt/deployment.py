@@ -62,6 +62,7 @@ class Deployment(object):
         cons3rt_role_name (str): Role name of this system in the
             context of the CONS3RT scenario
         asset_dir (dir): Asset directory system path
+        media_dir (dir): Media directory system path
     """
     def __init__(self):
         self.cls_logger = mod_logger + '.Deployment'
@@ -70,6 +71,7 @@ class Deployment(object):
         self.deployment_home = ''
         self.cons3rt_role_name = ''
         self.asset_dir = ''
+        self.media_dir = ''
         try:
             self.set_deployment_home()
             self.read_deployment_properties()
@@ -77,6 +79,7 @@ class Deployment(object):
             raise
         self.set_cons3rt_role_name()
         self.set_asset_dir()
+        self.set_media_dir()
 
     def set_deployment_home(self):
         """Sets self.deployment_home
@@ -366,7 +369,19 @@ class Deployment(object):
         else:
             log.info('Found environment variable ASSET_DIR: {a}'.format(a=self.asset_dir))
 
-
+    def set_media_dir(self):
+        """This method sets the media_dir variable via
+        the asset_dir variable
+        
+        :return: None
+        """
+        log = logging.getLogger(self.cls_logger + '.get_media_dir')
+        self.media_dir = self.asset_dir + '/media'
+        if os.path.isdir(self.media_dir):
+            log.info('Found MEDIA_DIR: {a}'.format(a=self.media_dir))
+        else:
+            log.warn('MEDIA_DIR could not be found.')
+            
 def main():
     """Sample usage for this python module
 
