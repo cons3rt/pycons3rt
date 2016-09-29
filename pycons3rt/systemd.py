@@ -50,9 +50,9 @@ class Systemd():
 
 		log = logging.getLogger(self.cls_logger + '.start')
 		if not isinstance(process, str):
-			msg = 'process not defined'
+			msg = 'process must be a string'
 			log.error(msg)
-			raise msg
+			raise TypeError(msg)
 		try:
 			log.info('Starting {} via systemd'.format(process))
 			self.manager.StartUnit(process, 'replace')
@@ -68,9 +68,9 @@ class Systemd():
 		"""
 		log = logging.getLogger(self.cls_logger + '.stop')
 		if not isinstance(process, str):
-			msg = 'process not defined'
+			msg = 'process must be a string'
 			log.error(msg)
-			raise msg
+			raise TypeError(msg)
 
 		try:
 			log.info('Stopping {} via systemd'.format(process))
@@ -88,9 +88,9 @@ class Systemd():
 		log = logging.getLogger(self.cls_logger + '.restart')
 
 		if not isinstance(process, str):
-			msg = 'process not defined'
+			msg = 'process must be a string'
 			log.error(msg)
-			raise msg
+			raise TypeError(msg)
 
 		try:
 			log.info('Restarting {} via systemd'.format(process))
@@ -108,9 +108,9 @@ class Systemd():
 		log = logging.getLogger(self.cls_logger + '.disable')
 
 		if not isinstance(process, str):
-			msg = 'process not defined'
+			msg = 'process must be a string'
 			log.error(msg)
-			raise msg
+			raise TypeError(msg)
 		
 		try:
 			log.info('Disabling {} via systemd'.format(process))
@@ -128,9 +128,9 @@ class Systemd():
 		log = logging.getLogger(self.cls_logger + '.enable')
 
 		if not isinstance(process, str):
-			msg = 'process not defined'
+			msg = 'process must be a string'
 			log.error(msg)
-			raise msg
+			raise TypeError(msg)
 
 		try:
 			log.info('Enabling {} via systemd'.format(process))
