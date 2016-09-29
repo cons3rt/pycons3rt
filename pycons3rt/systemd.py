@@ -52,7 +52,7 @@ class Systemd():
 		if not isinstance(process, str):
 			msg = 'process not defined'
 			log.error(msg)
-			raise CommandError(msg)
+			raise msg
 		try:
 			log.info('Starting {} via systemd'.format(process))
 			self.manager.StartUnit(process, 'replace')
@@ -70,7 +70,7 @@ class Systemd():
 		if not isinstance(process, str):
 			msg = 'process not defined'
 			log.error(msg)
-			raise CommandError(msg)
+			raise msg
 
 		try:
 			log.info('Stopping {} via systemd'.format(process))
@@ -90,7 +90,7 @@ class Systemd():
 		if not isinstance(process, str):
 			msg = 'process not defined'
 			log.error(msg)
-			raise CommandError(msg)
+			raise msg
 
 		try:
 			log.info('Restarting {} via systemd'.format(process))
@@ -110,7 +110,7 @@ class Systemd():
 		if not isinstance(process, str):
 			msg = 'process not defined'
 			log.error(msg)
-			raise CommandError(msg)
+			raise msg
 		
 		try:
 			log.info('Disabling {} via systemd'.format(process))
@@ -130,7 +130,7 @@ class Systemd():
 		if not isinstance(process, str):
 			msg = 'process not defined'
 			log.error(msg)
-			raise CommandError(msg)
+			raise msg
 
 		try:
 			log.info('Enabling {} via systemd'.format(process))
