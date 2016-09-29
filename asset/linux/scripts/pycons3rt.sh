@@ -135,10 +135,13 @@ function install_prerequisites() {
 	run_and_check_status pip install requests==2.10.0
 
     # Remove python-crypto from RHEL systems
-	if [[ ${packageManagerCommand} == *yum* ]] ; then
-	    ${logInfo} "This is a RHEL system, removing python-crypto..."
-	    run_and_check_status yum -y remove python-crypto
-    fi
+	#if [[ ${packageManagerCommand} == *yum* ]] ; then
+	#    ${logInfo} "This is a RHEL system, removing python-crypto..."
+	#    run_and_check_status yum -y remove python-crypto
+    #fi
+
+    ${logInfo} "Setting permissions on the AWS executable..."
+    run_and_check_status chmod +x /usr/bin/aws
 
 	${logInfo} "Verifying AWS CLI install ..."
 	run_and_check_status aws --version
@@ -168,7 +171,7 @@ function main() {
     scriptDir="${ASSET_DIR}/scripts"
 
     # Ensure DEPLOYMENT_HOME exists
-    if [ -z ${DEPLOYMENT_HOME} ] ; then
+    if [ -z "${DEPLOYMENT_HOME}" ] ; then
         ${logWarn} "DEPLOYMENT_HOME is not set, attempting to determine..."
         deploymentDirCount=$(ls /opt/cons3rt-agent/run | grep Deployment | wc -l)
         # Ensure only 1 deployment directory was found
