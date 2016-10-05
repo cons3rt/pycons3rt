@@ -212,7 +212,7 @@ class Cons3rtUtil(object):
             if len(project_chunk) != 5:
                 continue
             project['id'] = project_chunk[0].strip()
-            project['name'] = project_chunk[1].strip()
+            project['name'] = project_chunk[1].replace(':', '').strip()
             project['description'] = project_chunk[2].strip()
             itar_info = project_chunk[3].split(':')
             if len(itar_info) != 3:
