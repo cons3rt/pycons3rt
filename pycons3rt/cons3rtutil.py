@@ -275,7 +275,7 @@ class Cons3rtUtil(object):
         log.info('Using password: {p}'.format(p=password))
 
         # Set the admin user's password
-        command_string = '-setpassword {u} {p}'.format(u=user, p=password)
+        command_string = '-setpassword {u} \'{p}\''.format(u=user, p=password)
         self.run_security_admin_command(command_string)
 
         log.info('Successfully created user {u} with password {p}'.format(u=user, p=password))
