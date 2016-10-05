@@ -112,8 +112,7 @@ class Cons3rtUtil(object):
             log.error(msg)
             raise Cons3rtUtilError(msg)
         else:
-            log.info('Successfully ran CONS3RT Command: {d}, and produced output:\n{o}'.format(
-                d=command_string, o=result['output']))
+            log.info('Successfully ran CONS3RT Command: {d}'.format(d=command_string))
         return result
 
     def run_security_admin_command(self, command_args):
@@ -336,7 +335,7 @@ class Cons3rtUtil(object):
         # Create the new project if it does not exist
         if not project_exists:
             log.info('Attempting to create project with name: {p}'.format(p=project_name))
-            command_string = '-createproject \'{p}\' -description {d}'.format(p=project_name, d=description)
+            command_string = '-createproject \'{p}\' -description \'{d}\''.format(p=project_name, d=description)
             self.run_security_admin_command(command_string)
             log.info('Created project: {p}'.format(p=project_name))
 
