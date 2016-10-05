@@ -150,8 +150,7 @@ class Cons3rtUtil(object):
         users = []
         log.debug('Running the command to get a list of CONS3RT users...')
         result = self.run_security_admin_command('-listusers')
-        output = result['output'].replace('\n', '   ')
-        result_parts = re.split(r'\s{2,}', output)
+        result_parts = re.split(r'\s{2,}', result['output'])
         if len(result_parts) < 6:
             log.info('No users found')
             return users
