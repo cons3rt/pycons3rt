@@ -250,6 +250,7 @@ class Cons3rtUtil(object):
         user_exists = False
         cons3rt_users = self.get_cons3rt_users()
         for cons3rt_user in cons3rt_users:
+            log.debug('Found user: {u}'.format(u=cons3rt_user['username']))
             if cons3rt_user['username'] == user:
                 user_exists = True
                 log.info('Username already exists: {u}'.format(u=user))
@@ -406,7 +407,7 @@ class Cons3rtUtil(object):
             raise Cons3rtUtilError(msg)
 
         log.info('Attempting to generate a rest key for user {u} in project {p}...'.format(u=user, p=project))
-        command_string = '-requestapitoken {u} {p}'.format(u=user, p=project)
+        command_string = '-requestapitoken {u} \'{p}\''.format(u=user, p=project)
         result = self.run_security_admin_command(command_string)
         rest_key = result['output'].split()[6]
         log.info('Successfully generated ReST key for user {u} in project {p}: {k}'.format(
