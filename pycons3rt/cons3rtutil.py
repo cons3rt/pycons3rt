@@ -10,6 +10,7 @@ import os
 import logging
 import random
 import string
+import re
 
 from logify import Logify
 from bash import run_command
@@ -39,6 +40,15 @@ class Cons3rtUtil(object):
         self.dep = dep
         self.cons3rt_fqdn = cons3rt_fqdn
         self.secrets_file = _secrets_file
+        # Determine cons3rt base
+        if os.path.isdir('/app/cons3rt'):
+            self.cons3rt_base = '/app'
+        elif os.path.isdir('/opt/cons3rt'):
+            self.cons3rt_base = '/opt'
+        else:
+            msg = 'Unable to determine CONS3RT_BASE'
+            log.error(msg)
+            raise Cons3rtUtilError(msg)
 
         # Validate deployment info provided and get it if needed
         if (dep is None) or (not isinstance(dep, deployment.Deployment)):
@@ -74,26 +84,156 @@ class Cons3rtUtil(object):
             msg = 'Could not find a value for ADMIN_PASS'
             log.error(msg)
             raise Cons3rtUtilError(msg)
+        self.rca = os.path.join(self.cons3rt_base, 'cons3rt', 'scripts', 'run_cons3rt_admin.sh')
+        self.rsa = os.path.join(self.cons3rt_base, 'cons3rt', 'scripts', 'run_security_admin.sh')
 
-        self.rca = os.path.join('/net', 'cons3rt.{dn}'.format(dn=self.cons3rt_fqdn),
-                                'cons3rt', 'scripts', 'run_cons3rt_admin.sh')
-        self.rsa = os.path.join('/net', 'cons3rt.{dn}'.format(dn=self.cons3rt_fqdn),
-                                'cons3rt', 'scripts', 'run_security_admin.sh')
-        self.rym = os.path.join('/net', 'cons3rt.{dn}'.format(dn=self.cons3rt_fqdn),
-                                'cons3rt', 'scripts', 'run_yaml_main.sh')
-        if not os.path.isfile(self.rca) or not os.path.isfile(self.rsa):
-            msg = 'CONS3RT scripts not found {c}, {s}'.format(c=self.rca,
-                                                              s=self.rsa)
+    def run_cons3rt_command(self, command_string):
+        """Runs a cons3rt CLI command string remotely on the cons3rt host
+
+        :param command_string:
+        :return: (dict) output of bash.run_command
+        :raises: Cons3rtUtilError
+        """
+        log = logging.getLogger(self.cls_logger + '.run_cons3rt_command')
+
+        command = ['ssh', 'cons3rt', command_string]
+
+        # Run the run_security_admin.sh script to create the user
+        log.debug('Running CONS3RT CLI Command: {d}'.format(d=command))
+        try:
+            result = run_command(command, timeout_sec=180)
+        except CommandError:
+            _, ex, trace = sys.exc_info()
+            msg = 'There was a problem running cons3rt CLI command: {c}\n{e}'.format(c=command_string, e=str(ex))
+            raise Cons3rtUtilError, msg, trace
+        if result['code'] != 0:
+            msg = 'Running cons3rt CLI command [ {d} ] return non-zero exit code: {c}, and produced output:{o}'.format(
+                d=command_string, c=result['code'], o=result['output'])
             log.error(msg)
             raise Cons3rtUtilError(msg)
         else:
-            log.info('Found run_cons3rt_admin.sh and run_security_admin.sh scripts')
+            log.info('Successfully ran CONS3RT Command: {d}, and produced output:\n{o}'.format(
+                d=command_string, o=result['output']))
+        return result
+
+    def run_security_admin_command(self, command_args):
+        """Builds a command string for a run_security_admin.sh command
+
+        :param command_args: (str) Args for the run_security_admin.sh command not including credentials
+        :return: (dict) output of bash.run_command
+        """
+        log = logging.getLogger(self.cls_logger + '.run_security_admin_command')
+        command_string = '{s} -adminuser {u} -adminpassword {p} {a}'.format(
+            s=self.rsa, u=self.admin_user, p=self.admin_pass, a=command_args)
+        log.debug('Created run_security_admin command string: {d}'.format(d=command_string))
+        return self.run_cons3rt_command(command_string)
+
+    def run_cons3rt_admin_command(self, command_args):
+        """Builds a command string for a run_cons3rt_admin.sh command
+
+        :param command_args: (str) Args for the run_cons3rt_admin.sh command not including credentials
+        :return: (dict) output of bash.run_command
+        """
+        log = logging.getLogger(self.cls_logger + '.run_cons3rt_admin_command')
+        command_string = '{s} -user {u} -password {p} {a}'.format(
+            s=self.rca, u=self.admin_user, p=self.admin_pass, a=command_args)
+        log.debug('Created run_security_admin command string: {d}'.format(d=command_string))
+        return self.run_cons3rt_command(command_string)
+
+    def get_cons3rt_users(self):
+        """Queries CONS3RT for a list of users
+
+        :return: (list) Containing user data
+        :raises: Cons3rtUtilError
+        """
+        log = logging.getLogger(self.cls_logger + '.get_cons3rt_users')
+        users = []
+        log.debug('Running the command to get a list of CONS3RT users...')
+        result = self.run_security_admin_command('-listusers')
+        output = result['output'].replace('\n', '   ')
+        result_parts = re.split(r'\s{2,}', output)
+        if len(result_parts) < 6:
+            log.info('No users found')
+            return users
+        result_parts = result_parts[5:]
+
+        if len(result_parts) % 5 != 0:
+            msg = 'Unable to compute a list of users from the output'
+            log.error(msg)
+            raise Cons3rtUtilError(msg)
+
+        # Parse the output into sub-lists of length 5
+        user_chunks = [result_parts[x:x+5] for x in xrange(0, len(result_parts), 5)]
+
+        # Parse the list of User Info Chunks
+        for user_chunk in user_chunks:
+            user = {}
+            if len(user_chunk) != 5:
+                continue
+            id_chunk = user_chunk[0].split(':')
+            if len(id_chunk) != 2:
+                continue
+            user['id'] = id_chunk[0].strip()
+            user['username'] = id_chunk[1].strip()
+            user['state'] = user_chunk[1].replace(':', '').strip()
+            user['certs'] = user_chunk[2].replace(':', '').strip()
+            user['system_roles'] = user_chunk[3].strip()
+            user['project_roles'] = user_chunk[4].strip()
+            log.debug('Adding user to list: {u}'.format(u=user))
+            users.append(user)
+        return users
+
+    def get_cons3rt_projects(self):
+        """Queries CONS3RT for a list of projects
+
+        :return: (list) of projects
+        :raises: Cons3rtUtilError
+        """
+        log = logging.getLogger(self.cls_logger + '.get_cons3rt_projects')
+        projects = []
+        log.debug('Running the command to get a list of CONS3RT projects...')
+        result = self.run_cons3rt_admin_command('-listprojects -terse')
+        output = result['output'].replace('\n', '   ')
+        result_parts = re.split(r'\s{2,}', output)
+        if len(result_parts) < 9:
+            log.info('No projects found')
+            return projects
+        result_parts = result_parts[7:]
+
+        if len(result_parts) % 5 != 0:
+            msg = 'Unable to compute a list of projects from the output'
+            log.error(msg)
+            raise Cons3rtUtilError(msg)
+
+        # Parse the output into sub-lists of length 5
+        project_chunks = [result_parts[x:x+5] for x in xrange(0, len(result_parts), 5)]
+
+        # Parse the list of Project Info Chunks
+        for project_chunk in project_chunks:
+            project = {}
+            if len(project_chunk) != 5:
+                continue
+            project['id'] = project_chunk[0].strip()
+            project['name'] = project_chunk[1].strip()
+            project['description'] = project_chunk[2].strip()
+            itar_info = project_chunk[3].split(':')
+            if len(itar_info) != 3:
+                project['itar'] = ''
+                project['trustedProjects'] = ''
+            else:
+                project['itar'] = itar_info[1].strip()
+                project['trustedProjects'] = itar_info[2].strip()
+            project['members'] = project_chunk[4].replace(':', '').strip()
+            log.debug('Adding project to list: {p}'.format(p=project))
+            projects.append(project)
+        return projects
 
     def create_user(self):
         """Creates a CONS3RT user for this CONS3RT instance based on
         the Deployment Run submitter
 
         :return: Dict containing username and password
+        :raises: Cons3rtUtilError
         """
         log = logging.getLogger(self.cls_logger + '.create_user')
         log.info('Creating a CONS3RT user...')
@@ -107,65 +247,39 @@ class Cons3rtUtil(object):
         else:
             log.info('Username: {u}'.format(u=user))
 
-        # Determine the email address
-        log.info('Determining email address to use...')
-        email = self.dep.get_value('cons3rt.user.email')
-        if email is None:
-            log.info('Using default email address: homer@jackpinetech.com')
-            email = 'homer@jackpinetech.com'
-        else:
-            log.info('Email: {e}'.format(e=email))
+        # Check to see if the username already exists
+        log.info('Checking if the username already exists...')
+        user_exists = False
+        cons3rt_users = self.get_cons3rt_users()
+        for cons3rt_user in cons3rt_users:
+            if cons3rt_user['username'] == user:
+                user_exists = True
+                log.info('Username already exists: {u}'.format(u=user))
+                break
+
+        # Create a user if it does not exist
+        if not user_exists:
+            # Determine the email address
+            log.info('Determining email address to use...')
+            email = self.dep.get_value('cons3rt.user.email')
+            if email is None:
+                log.info('Using default email address: homer@jackpinetech.com')
+                email = 'homer@jackpinetech.com'
+            else:
+                log.info('Email: {e}'.format(e=email))
+
+            command_string = '-createuser {u} -email {e} -firstname Admin -lastname User'.format(u=user, e=email)
+            self.run_security_admin_command(command_string)
 
         # Create a random password
         password = generate_cons3rt_password()
         log.info('Using password: {p}'.format(p=password))
 
-        command = [self.rsa, '-adminuser', 'admin', '-adminpassword',
-                   self.admin_pass, '-createuser', user, '-email',
-                   email, '-firstname', 'Homer', '-lastname', 'Simpson']
+        # Set the admin user's password
+        command_string = '-setpassword {u} {p}'.format(u=user, p=password)
+        self.run_security_admin_command(command_string)
 
-        # Run the run_security_admin.sh script to create the user
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to create CONS3RT user'
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Creating CONS3RT user produced the following output and ' \
-                  'returned exit code: {c}\n{o}'.format(c=result['code'],
-                                                        o=result['output'])
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        else:
-            log.info('Successfully created the CONS3RT user\n{o}'.format(
-                o=result['output']))
-
-        command = [self.rsa, '-adminuser', 'admin', '-adminpassword',
-                   self.admin_pass, '-setpassword', user, '{p}'.format(p=password)]
-
-        # Run the run_security_admin.sh script to set the password
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to set CONS3RT user password'
-            log.error(msg)
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Setting CONS3RT user password produced the following output ' \
-                  'and returned exit code: {c}\n{o}'.format(c=result['code'],
-                                                            o=result['output'])
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        else:
-            log.info('Successfully set the CONS3RT user password\n{o}'.format(
-                o=result['output']))
-
-        log.info('Successfully created user {u} with password {p}'.format(
-            u=user, p=password))
+        log.info('Successfully created user {u} with password {p}'.format(u=user, p=password))
         result = {
             'username': user,
             'password': password
@@ -179,6 +293,7 @@ class Cons3rtUtil(object):
         :param user: String CONS3RT username
         :param role: String CONS3RT system role
         :return: None
+        :raises: Cons3rtUtilError
         """
         log = logging.getLogger(self.cls_logger + '.assign_system_role')
         if not isinstance(user, basestring):
@@ -192,29 +307,9 @@ class Cons3rtUtil(object):
         log.info('Attempting to assign system role {r} to user: {u}'.format(
             r=role, u=user))
 
-        command = [self.rsa, '-adminuser', 'admin', '-adminpassword',
-                   self.admin_pass, '-assignsystemrole', user, role]
-
-        # Assign system role to user
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to assign system role {r} to user {u}'.format(
-                r=role, u=user)
-            log.error(msg)
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Assigning system role {r} to user {u} produced the following ' \
-                  'output and returned exit code: {c}\n{o}'.format(c=result['code'],
-                                                                   o=result['output'],
-                                                                   u=user, r=role)
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        else:
-            log.info('Successfully assigned system role {r} to user {u}\n{o}'.format(
-                o=result['output'], u=user, r=role))
+        command_string = '-assignsystemrole {u} {r}'.format(u=user, r=role)
+        self.run_security_admin_command(command_string)
+        log.info('Successfully assigned system role {r} to user {u}'.format(u=user, r=role))
 
     def create_project(self, project_name, description=''):
         """Creates a CONS3RT project with the specified name
@@ -222,6 +317,7 @@ class Cons3rtUtil(object):
         :param project_name: String name of the Project
         :param description: String description
         :return: None
+        :raises: Cons3rtUtilError
         """
         log = logging.getLogger(self.cls_logger + '.assign_system_role')
         if not isinstance(project_name, basestring):
@@ -229,31 +325,21 @@ class Cons3rtUtil(object):
             log.error(msg)
             raise Cons3rtUtilError(msg)
 
-        log.info('Attempting to create project with name: {p}'.format(
-            p=project_name))
+        log.info('Checking if the project already exists...')
+        project_exists = False
+        cons3rt_projects = self.get_cons3rt_projects()
+        for cons3rt_project in cons3rt_projects:
+            if cons3rt_project['name'] == project_name:
+                project_exists = True
+                log.info('Project already exists: {p}'.format(p=project_name))
+                break
 
-        command = [self.rsa, '-adminuser', 'admin', '-adminpassword', self.admin_pass,
-                   '-createproject', project_name, '-description', description]
-
-        # Create the project
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to create project: {p}'.format(p=project_name)
-            log.error(msg)
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Creating project {p} produced the following output and ' \
-                  'returned exit code: {c}\n{o}'.format(c=result['code'],
-                                                        o=result['output'],
-                                                        p=project_name)
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        else:
-            log.info('Successfully created project {p}\n{o}'.format(
-                o=result['output'], p=project_name))
+        # Create the new project if it does not exist
+        if not project_exists:
+            log.info('Attempting to create project with name: {p}'.format(p=project_name))
+            command_string = '-createproject {p} -description {d}'.format(p=project_name, d=description)
+            self.run_security_admin_command(command_string)
+            log.info('Created project: {p}'.format(p=project_name))
 
     def assign_project(self, user, project):
         """Assigns an existing CONS3RT user to a CONS3RT project
@@ -261,6 +347,7 @@ class Cons3rtUtil(object):
         :param user: String username
         :param project: String project name
         :return: None
+        :raises: Cons3rtUtilError
         """
         log = logging.getLogger(self.cls_logger + '.assign_project')
         if not isinstance(user, basestring):
@@ -272,39 +359,15 @@ class Cons3rtUtil(object):
             log.error(msg)
             raise Cons3rtUtilError(msg)
 
-        log.info('Attempting to assign user {u} to project {p}'.format(
-            u=user, p=project))
+        log.info('Attempting to assign user {u} to project {p}'.format(u=user, p=project))
+        command_string = '-assignproject {u} {p}'.format(u=user, p=project)
+        self.run_security_admin_command(command_string)
+        log.info('Successfully assigned user {u} to project {p}'.format(u=user, p=project))
 
-        command = [self.rsa, '-adminuser', 'admin', '-adminpassword', self.admin_pass,
-                   '-assignproject', user, project]
-
-        # Assign user to project
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to assign user {u} to project {p}'.format(
-                p=project, u=user)
-            log.error(msg)
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Adding user {u} to project {p} produced the following ' \
-                  'output and returned exit code: {c}\n{o}'.format(c=result['code'],
-                                                                   o=result['output'],
-                                                                   u=user, p=project)
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        else:
-            log.info('Successfully assigned user {u} to project {p}\n{o}'.format(
-                o=result['output'], u=user, p=project))
-
-    def get_project_id(self, project_name, admin_user=None, admin_pass=None):
+    def get_project_id(self, project_name):
         """Returns the project ID given a project name
 
         :param project_name: String name of the project to get the ID
-        :param admin_user String username of the administrative user
-        :param admin_pass String password for the administrative user
         :return: int ID of the CONS3RT project or None
         :raises Cons3rtUtilError
         """
@@ -314,233 +377,16 @@ class Cons3rtUtil(object):
             log.error(msg)
             raise Cons3rtUtilError(msg)
 
-        if admin_user is None:
-            admin_user = self.admin_user
-        if admin_pass is None:
-            admin_pass = self.admin_pass
-
-        command = [self.rca, '-user', admin_user, '-password', admin_pass,
-                   '-listprojects', '-terse']
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to list projects to get the project ID'
-            log.error(msg)
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Listing projects produced the following output and returned ' \
-                  'exit code: {c}\n{o}'.format(c=result['code'], o=result['output'])
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-
-        projects = result['output'].split('\n')
-        projects.pop(0)
+        projects = self.get_cons3rt_projects()
         log.debug('Found projects: {p}'.format(p=projects))
 
         # Find the project ID by name
         project_id = None
         for project in projects:
-            if project_name in project:
-                project_id = project.split()[0].strip()
+            if project_name == project['name']:
+                project_id = project['id']
         log.info('Found project ID: {id}'.format(id=project_id))
         return project_id
-
-    def get_cloudspace_id(self, cloudspace_name, admin_user=None,
-                          admin_pass=None):
-        """Returns the cloudspace ID given a cloudspace name
-
-        :param cloudspace_name: String name of the cloudspace
-        :param admin_user: String username of the administrative user
-        :param admin_pass: String password for the administrative user
-        :return: int ID of the Cloudspace or None
-        :raises Cons3rtUtilError
-        """
-        log = logging.getLogger(self.cls_logger + '.get_cloudspace_id')
-        if not isinstance(cloudspace_name, basestring):
-            msg = 'cloudspace_name argument must be a string'
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-
-        if admin_user is None:
-            admin_user = self.admin_user
-        if admin_pass is None:
-            admin_pass = self.admin_pass
-
-        command = [self.rca, '-user', admin_user, '-password', admin_pass,
-                   '-listvirtrealms', '-terse']
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to list cloudspaces to get the cloudspace ID'
-            log.error(msg)
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Listing cloudspaces produced the following output and returned ' \
-                  'exit code: {c}\n{o}'.format(c=result['code'], o=result['output'])
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-
-        cloudspaces = result['output'].split('\n')
-        cloudspaces.pop(0)
-        cloudspaces.remove('')
-
-        log.debug('Found cloudspaces: {c}'.format(c=cloudspaces))
-
-        cloudspace_id = None
-        for cloudspace in cloudspaces:
-            if cloudspace_name in cloudspace:
-                cloudspace_id = cloudspace.split()[0].strip().translate(None, '.')
-        log.info('Found Cloudspace ID: {id}'.format(id=cloudspace_id))
-        return cloudspace_id
-
-    def add_project_to_cloudspace(self, project_id, cloudspace_id,
-                                  admin_user=None, admin_pass=None):
-        """Adds the project ID to the provided Cloudspace ID
-
-        :param project_id: int ID of the project
-        :param cloudspace_id: int ID of the cloudspace
-        :param admin_user:  String username of the administrative user
-        :param admin_pass: String password for the administrative user
-        :return: None
-        :raises Cons3rtUtilError
-        """
-        log = logging.getLogger(self.cls_logger + '.add_project_to_cloudspace')
-        try:
-            project_id = int(project_id)
-        except ValueError:
-            msg = 'project_id argument must be an int'
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        try:
-            cloudspace_id = int(cloudspace_id)
-        except ValueError:
-            msg = 'cloudspace_id argument must be an int'
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-
-        if admin_user is None:
-            admin_user = self.admin_user
-        if admin_pass is None:
-            admin_pass = self.admin_pass
-
-        command = [self.rca, '-user', admin_user, '-password', admin_pass,
-                   '-addprojecttovirtrealm', project_id, cloudspace_id]
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to add project {p} to cloudspace {c}'.format(
-                p=project_id, c=cloudspace_id)
-            log.error(msg)
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Adding project {p} to cloudspace {cs} produced the following output and returned exit code: ' \
-                  '{c}\n{o}'.format(c=result['code'], o=result['output'], p=project_id, cs=cloudspace_id)
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        log.info('Successfully added project {p} to cloudspace {c}'.format(
-            c=cloudspace_id, p=project_id))
-
-    def set_default_cloudspace(self, project_id, cloudspace_id, admin_user=None, admin_pass=None):
-        """Adds the Cloudspace ID as default for the provided Project
-        ID
-
-        :param project_id: int ID of the project
-        :param cloudspace_id: int ID of the cloudspace
-        :param admin_user:  String username of the administrative user
-        :param admin_pass: String password for the administrative user
-        :return: None
-        :raises Cons3rtUtilError
-        """
-        log = logging.getLogger(self.cls_logger + '.set_default_cloudspace')
-        try:
-            project_id = int(project_id)
-        except ValueError:
-            msg = 'project_id argument must be an int'
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        try:
-            cloudspace_id = int(cloudspace_id)
-        except ValueError:
-            msg = 'cloudspace_id argument must be an int'
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-
-        if admin_user is None:
-            admin_user = self.admin_user
-        if admin_pass is None:
-            admin_pass = self.admin_pass
-
-        command = [self.rca, '-user', admin_user, '-password', admin_pass,
-                   '-setdefaultvirtrealmforproject', project_id, cloudspace_id]
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to set default cloudspace to {c} for project {p}'.format(
-                p=project_id, c=cloudspace_id)
-            log.error(msg)
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Setting default cloudspace {cs} for project {p} produced the following output and returned exit ' \
-                  'code: {c}\n{o}'.format(c=result['code'], o=result['output'], p=project_id, cs=cloudspace_id)
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        log.info('Successfully set cloudspace {c} as default for project {p}'.format(c=cloudspace_id, p=project_id))
-
-    def run_yaml_main(self, project_name, asset_type, yaml_file, admin_user=None, admin_pass=None):
-        """Runs a CONS3RT yaml import
-
-        :param project_name: String Project Name
-        :param asset_type: String asset type (e.g. CLOUD)
-        :param yaml_file: String path to the yaml file to import
-        :param admin_user: String username of the administrative user
-        :param admin_pass: String password for the administrative user
-        :return: None
-        :raises Cons3rtUtilError
-        """
-        log = logging.getLogger(self.cls_logger + '.run_yaml_main')
-
-        if not isinstance(project_name, basestring):
-            msg = 'project_name argument must be a string'
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        if not isinstance(asset_type, basestring):
-            msg = 'asset_type argument must be a string'
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        if not os.path.isfile(yaml_file):
-            msg = 'File not found: {f}'.format(f=yaml_file)
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        if admin_user is None:
-            admin_user = self.admin_user
-        if admin_pass is None:
-            admin_pass = self.admin_pass
-
-        command = [self.rym, '-user', admin_user, '-password', admin_pass,
-                   '-project', project_name, '-assetType', asset_type,
-                   '-file', yaml_file, '-import']
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable import from yaml file: {f}'.format(f=yaml_file)
-            log.error(msg)
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Importing yaml file {f} produced the following output and returned exit code: {c}\n{o}'.format(
-                c=result['code'], o=result['output'], f=yaml_file)
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        log.info('Successfully imported yaml file: {f}'.format(f=yaml_file))
 
     def generate_rest_key(self, user, project):
         """Assigns an ReST key to an existing CONS3RT user for a CONS3RT project
@@ -548,6 +394,7 @@ class Cons3rtUtil(object):
         :param user: String username
         :param project: String project name
         :return: String rest_key
+        :raises: Cons3rtUtilError
         """
         log = logging.getLogger(self.cls_logger + '.generate_rest_key')
         if not isinstance(user, basestring):
@@ -559,34 +406,13 @@ class Cons3rtUtil(object):
             log.error(msg)
             raise Cons3rtUtilError(msg)
 
-        log.info('Attempting to generate a rest key for user {u} in project {p}'.format(
-                u=user, p=project))
-
-        command = [self.rsa, '-adminuser', 'admin', '-adminpassword', self.admin_pass,
-                   '-requestapitoken', user, project]
-
-        # Generate ReST key
-        try:
-            result = run_command(command)
-        except CommandError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to generate rest key for user {u} in project {p}'.format(
-                    p=project, u=user)
-            log.error(msg)
-            raise Cons3rtUtilError, msg, trace
-
-        if result['code'] != 0:
-            msg = 'Generating rest key for {u} in project {p} produced the following ' \
-                  'output and returned exit code: {c}\n{o}'.format(c=result['code'],
-                                                                   o=result['output'],
-                                                                   u=user, p=project)
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
-        else:
-            rest_key = result['output'].split()[6]
-            log.info('Successfully generated ReST key for user {u} in project {p}:\n{k}'.format(
-                    k=rest_key, u=user, p=project))
-            return rest_key
+        log.info('Attempting to generate a rest key for user {u} in project {p}...'.format(u=user, p=project))
+        command_string = '-requestapitoken {u} {p}'.format(u=user, p=project)
+        result = self.run_security_admin_command(command_string)
+        rest_key = result['output'].split()[6]
+        log.info('Successfully generated ReST key for user {u} in project {p}: {k}'.format(
+            k=rest_key, u=user, p=project))
+        return rest_key
 
 
 def generate_cons3rt_password():
