@@ -327,6 +327,7 @@ class Cons3rtUtil(object):
         project_exists = False
         cons3rt_projects = self.get_cons3rt_projects()
         for cons3rt_project in cons3rt_projects:
+            log.debug('Found CONS3RT Project: {p}'.format(p=cons3rt_project['name']))
             if cons3rt_project['name'] == project_name:
                 project_exists = True
                 log.info('Project already exists: {p}'.format(p=project_name))
