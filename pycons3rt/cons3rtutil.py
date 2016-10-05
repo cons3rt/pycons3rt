@@ -336,7 +336,7 @@ class Cons3rtUtil(object):
         # Create the new project if it does not exist
         if not project_exists:
             log.info('Attempting to create project with name: {p}'.format(p=project_name))
-            command_string = '-createproject {p} -description {d}'.format(p=project_name, d=description)
+            command_string = '-createproject \'{p}\' -description {d}'.format(p=project_name, d=description)
             self.run_security_admin_command(command_string)
             log.info('Created project: {p}'.format(p=project_name))
 
@@ -359,7 +359,7 @@ class Cons3rtUtil(object):
             raise Cons3rtUtilError(msg)
 
         log.info('Attempting to assign user {u} to project {p}'.format(u=user, p=project))
-        command_string = '-assignproject {u} {p}'.format(u=user, p=project)
+        command_string = '-assignproject {u} \'{p}\''.format(u=user, p=project)
         self.run_security_admin_command(command_string)
         log.info('Successfully assigned user {u} to project {p}'.format(u=user, p=project))
 
