@@ -1123,7 +1123,7 @@ def create_remote_host_marker_file(host, file_path):
         msg = 'file_path argument must be a string'
         log.error(msg)
         raise TypeError(msg)
-    log.info('Attempting to create marker file {f} on host: {h}...'.format(f=file_path, h=host))
+    log.debug('Attempting to create marker file {f} on host: {h}...'.format(f=file_path, h=host))
     command = ['ssh', '{h}'.format(h=host), 'touch {f}'.format(f=file_path)]
     try:
         result = run_command(command, timeout_sec=5.0)
