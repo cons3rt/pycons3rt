@@ -160,9 +160,11 @@ class Cons3rtUtil(object):
         # Loop through the lines and build the user list
         for result_line in result_lines:
             user = {}
-            user_items = result_line[1].split(':')
-            if len(user_items) != 6:
-                log.debug('Skipping user line, wrong number of items: {u}'.format(u=result_line))
+            user_items = result_line.split(':')
+            expected_num_items = 6
+            if len(user_items) != expected_num_items:
+                log.debug('Skipping user line, wrong number of items, found {n}, expected {e}: {u}'.format(
+                    u=result_line, n=len(user_items), e=expected_num_items))
                 continue
             try:
                 user['id'] = int(user_items[0].strip())
