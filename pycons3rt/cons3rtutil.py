@@ -149,34 +149,30 @@ class Cons3rtUtil(object):
         users = []
         log.debug('Running the command to get a list of CONS3RT users...')
         result = self.run_security_admin_command('-listusers')
-        result_parts = re.split(r'\s{2,}', result['output'])
-        if len(result_parts) < 6:
-            log.info('No users found')
-            return users
-        result_parts = result_parts[5:]
 
-        if len(result_parts) % 5 != 0:
-            msg = 'Unable to compute a list of users from the output'
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
+        # Split the output on lines
+        result_lines = result['output'].split('\n')
 
-        # Parse the output into sub-lists of length 5
-        user_chunks = [result_parts[x:x+5] for x in xrange(0, len(result_parts), 5)]
+        # Drop the SecurityAdmin output and header rows
+        result_lines = result_lines[2:]
 
-        # Parse the list of User Info Chunks
-        for user_chunk in user_chunks:
+        # Loop through the lines and build the user list
+        for result_line in result_lines:
             user = {}
-            if len(user_chunk) != 5:
+            if len(result_line) != 2:
                 continue
-            id_chunk = user_chunk[0].split(':')
-            if len(id_chunk) != 2:
+            user_items = result_line[1].split(':')
+            if len(user_items) != 6:
                 continue
-            user['id'] = id_chunk[0].strip()
-            user['username'] = id_chunk[1].strip()
-            user['state'] = user_chunk[1].replace(':', '').strip()
-            user['certs'] = user_chunk[2].replace(':', '').strip()
-            user['system_roles'] = user_chunk[3].strip()
-            user['project_roles'] = user_chunk[4].strip()
+            try:
+                user['id'] = int(user_items[0].strip())
+            except ValueError:
+                continue
+            user['username'] = user_items[1].strip()
+            user['state'] = user_items[2].strip()
+            user['certs'] = user_items[3].strip()
+            user['system_roles'] = user_items[4].strip()
+            user['project_roles'] = user_items[5].strip()
             log.debug('Adding user to list: {u}'.format(u=user))
             users.append(user)
         return users
