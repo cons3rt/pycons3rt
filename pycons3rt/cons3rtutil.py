@@ -169,7 +169,7 @@ class Cons3rtUtil(object):
             try:
                 user['id'] = int(user_items[0].strip())
             except ValueError:
-                log.debug('Skipping users, unable to compute User ID: {u}'.format(u=result_line))
+                log.debug('Skipping user, unable to compute User ID: {u}'.format(u=result_line))
                 continue
             user['username'] = user_items[1].strip()
             user['state'] = user_items[2].strip()
@@ -190,37 +190,32 @@ class Cons3rtUtil(object):
         projects = []
         log.debug('Running the command to get a list of CONS3RT projects...')
         result = self.run_cons3rt_admin_command('-listprojects -terse')
-        output = result['output'].replace('\n', '   ')
-        result_parts = re.split(r'\s{2,}', output)
-        if len(result_parts) < 9:
-            log.info('No projects found')
-            return projects
-        result_parts = result_parts[7:]
 
-        if len(result_parts) % 5 != 0:
-            msg = 'Unable to compute a list of projects from the output'
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
+        # Split the output on lines
+        project_lines = result['output'].split('\n')
 
-        # Parse the output into sub-lists of length 5
-        project_chunks = [result_parts[x:x+5] for x in xrange(0, len(result_parts), 5)]
+        # Drop the COns3rtAdmin output and header rows
+        project_lines = project_lines[2:]
 
-        # Parse the list of Project Info Chunks
-        for project_chunk in project_chunks:
+        # Loop through the lines and build the project list
+        for project_line in project_lines:
             project = {}
-            if len(project_chunk) != 5:
+            project_items = project_line.split(':')
+            expected_num_items = 6
+            if len(project_items) != expected_num_items:
+                log.debug('Skipping project line, wrong number of items, found {n}, expected {e}: {p}'.format(
+                    n=len(project_items), e=expected_num_items, p=project_line))
                 continue
-            project['id'] = project_chunk[0].strip()
-            project['name'] = project_chunk[1].replace(':', '').strip()
-            project['description'] = project_chunk[2].strip()
-            itar_info = project_chunk[3].split(':')
-            if len(itar_info) != 3:
-                project['itar'] = ''
-                project['trustedProjects'] = ''
-            else:
-                project['itar'] = itar_info[1].strip()
-                project['trustedProjects'] = itar_info[2].strip()
-            project['members'] = project_chunk[4].replace(':', '').strip()
+            try:
+                project['id'] = project_items[0].strip()
+            except ValueError:
+                log.debug('Skipping project, unable to compute Project ID: {p}'.format(p=project_line))
+                continue
+            project['name'] = project_items[1].strip()
+            project['description'] = project_items[2].strip()
+            project['itar'] = project_items[3].strip()
+            project['trusted_project'] = project_items[4].strip()
+            project['members'] = project_items[5].strip()
             log.debug('Adding project to list: {p}'.format(p=project))
             projects.append(project)
         return projects
