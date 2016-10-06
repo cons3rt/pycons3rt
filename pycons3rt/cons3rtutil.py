@@ -155,18 +155,22 @@ class Cons3rtUtil(object):
 
         # Drop the SecurityAdmin output and header rows
         result_lines = result_lines[2:]
+        log.debug('Found user info: {u}'.format(u=result_lines))
 
         # Loop through the lines and build the user list
         for result_line in result_lines:
             user = {}
             if len(result_line) != 2:
+                log.debug('Skipping user line: {u}'.format(u=result_line))
                 continue
             user_items = result_line[1].split(':')
             if len(user_items) != 6:
+                log.debug('Skipping user line, wrong number of items: {u}'.format(u=result_line))
                 continue
             try:
                 user['id'] = int(user_items[0].strip())
             except ValueError:
+                log.debug('Skipping users, unable to compute User ID: {u}'.format(u=result_line))
                 continue
             user['username'] = user_items[1].strip()
             user['state'] = user_items[2].strip()
