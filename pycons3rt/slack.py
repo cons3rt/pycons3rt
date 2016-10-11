@@ -16,9 +16,9 @@ python slack.py \
     --icon="https://s3.amazonaws.com/jackpine-images/homer-flexing.jpg"
 """
 import logging
-import urllib
 import json
 import argparse
+import requests
 
 # Set up logger name for this module
 try:
@@ -61,7 +61,7 @@ class SlackMessage(object):
         for option in self.options:
             if (option in kwargs) and (isinstance(option, basestring)):
                 self.payload[option] = kwargs[option]
-        log.info('SlackMessage configured using webhook URL: {u}'.format(
+        log.debug('SlackMessage configured using webhook URL: {u}'.format(
             u=self.webhook_url))
 
     def __str__(self):
@@ -79,7 +79,7 @@ class SlackMessage(object):
             log.error(msg)
             raise ValueError(msg)
         self.payload['text'] = text
-        log.info('Set message text to: {t}'.format(t=text))
+        log.debug('Set message text to: {t}'.format(t=text))
 
     def set_icon(self, icon_url):
         """Sets the icon_url for the message
@@ -93,7 +93,7 @@ class SlackMessage(object):
             log.error(msg)
             raise ValueError(msg)
         self.payload['icon_url'] = icon_url
-        log.info('Set Icon URL to: {u}'.format(u=icon_url))
+        log.debug('Set Icon URL to: {u}'.format(u=icon_url))
 
     def add_attachment(self, attachment):
         """Adds an attachment to the SlackMessage payload
@@ -110,7 +110,7 @@ class SlackMessage(object):
             log.error(msg)
             raise ValueError(msg)
         self.attachments.append(attachment.attachment)
-        log.info('Added attachment: {a}'.format(a=attachment))
+        log.debug('Added attachment: {a}'.format(a=attachment))
 
     def send(self):
         """Sends the Slack message
@@ -136,20 +136,14 @@ class SlackMessage(object):
             log.debug('JSON payload: %s', json_payload)
 
         # Post to Slack!
-        log.info('Posting message to Slack...')
-        try:
-            result = urllib.urlopen(self.webhook_url, json_payload)
-        except(TypeError, ValueError, IOError) as e:
-            log.error('There was a problem querying URL: %s\n%s',
-                      self.webhook_url, e)
-            raise
+        log.debug('Posting message to Slack...')
+        result = requests.post(url=self.webhook_url, data=json_payload)
 
         # Check return code
-        if result.getcode() != 200:
-            log.error('Slack post to url {u} failed with code: {c}:\n{o}'.format(
-                c=result.getcode(), u=result.geturl(), o=result.info()))
+        if result.status_code != 200:
+            log.error('Slack post to url {u} failed with code: {c}'.format(c=result.status_code, u=self.webhook_url))
         else:
-            log.info('Posted message to Slack successfully.')
+            log.debug('Posted message to Slack successfully.')
 
         # Clear out attachments after sending
         self.attachments = []
