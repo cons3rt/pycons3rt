@@ -134,37 +134,39 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
     query_url = nexus_url + '?' + params
     log.info('Attempting to download the artifact using URL:  {u}'.format(u=query_url))
 
-    # Attempt to download from Nexus
+    # Attempt to query Nexus
     retry_sec = 5
     max_retries = 6
     try_num = 1
-    download_success = False
+    query_success = False
     nexus_response = None
     while try_num <= max_retries:
-        if download_success:
+        if query_success:
             break
-        log.debug('Attempt # {n} of {m} to download from Nexus URL: {u}'.format(n=try_num, u=query_url, m=max_retries))
+        log.debug('Attempt # {n} of {m} to query the Nexus URL: {u}'.format(n=try_num, u=query_url, m=max_retries))
         try:
             nexus_response = requests.get(query_url, stream=True, timeout=timeout_sec)
         except requests.exceptions.Timeout:
             _, ex, trace = sys.exc_info()
-            msg = 'Caught {n} exception: Nexus download timed out after {t} seconds, retrying in {r} sec. Details:\n{e}'.format(
+            msg = 'Caught {n} exception: Nexus download timed out after {t} seconds:\n{e}'.format(
                 n=ex.__class__.__name__, t=timeout_sec, r=retry_sec, e=str(ex))
             log.warn(msg)
             if try_num < max_retries:
+                log.info('Retrying query in {t} sec...'.format(t=retry_sec))
                 time.sleep(retry_sec)
         except requests.exceptions.RequestException:
             _, ex, trace = sys.exc_info()
-            msg = 'Caught {n} exception: Nexus download failed with the following exception, retrying in {r} sec. ' \
-                  'Details:\n{e}'.format(n=ex.__class__.__name__, r=retry_sec, e=str(ex))
+            msg = 'Caught {n} exception: Nexus download failed with the following exception:\n{e}'.format(
+                n=ex.__class__.__name__, r=retry_sec, e=str(ex))
             log.warn(msg)
             if try_num < max_retries:
+                log.info('Retrying query in {t} sec...'.format(t=retry_sec))
                 time.sleep(retry_sec)
         else:
-            download_success = True
+            query_success = True
         try_num += 1
 
-    if download_success is False:
+    if not query_success:
         msg = 'Unable to download the artifact from Nexus with URL after {m} attempts: {u}'.format(
             u=query_url, m=max_retries)
         log.error(msg)
@@ -186,27 +188,63 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
     else:
         log.info('Artifact file size: {s}'.format(s=file_size))
 
-    # Check for an existing file
+    # Determine the full download file path
     file_name = nexus_response.url.split('/')[-1]
     download_file = os.path.join(destination_dir, file_name)
-    if os.path.isfile(download_file):
-        log.debug('File already exists, removing: {d}'.format(d=download_file))
-        os.remove(download_file)
 
-    # Download the content from the response
-    log.debug('Attempting to save file: {d}'.format(d=download_file))
-    chunk_size = 1024
-    file_size_dl = 0
-    with open(download_file, 'wb') as f:
-        for chunk in nexus_response.iter_content(chunk_size=chunk_size):
-            if chunk:
-                f.write(chunk)
-                if not suppress_status:
-                    file_size_dl += len(chunk)
-                    status = r"%10d  [%3.2f%%]" % (file_size_dl, file_size_dl * 100. / file_size)
-                    status += chr(8)*(len(status)+1)
-                    print status,
-    log.info('Saved file: {d}'.format(d=download_file))
+    # Attempt to download the content from the response
+    log.info('Attempting to download content of size {s} from Nexus to file: {d}'.format(s=file_size, d=download_file))
+    retry_sec = 5
+    max_retries = 6
+    try_num = 1
+    download_success = False
+    dl_err = None
+
+    while try_num <= max_retries:
+
+        # Break the loop if the download was successful
+        if download_success:
+            break
+
+        # Remove the existing file if it exists
+        if os.path.isfile(download_file):
+            log.debug('File already exists, removing: {d}'.format(d=download_file))
+            os.remove(download_file)
+
+        # Attempt to download content
+        log.debug('Attempt # {n} of {m} to download content from the Nexus response'.format(n=try_num, m=max_retries))
+        chunk_size = 1024
+        file_size_dl = 0
+        try:
+            with open(download_file, 'wb') as f:
+                for chunk in nexus_response.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        f.write(chunk)
+                        file_size_dl += len(chunk)
+                        status = r"%10d  [%3.2f%%]" % (file_size_dl, file_size_dl * 100. / file_size)
+                        status += chr(8)*(len(status)+1)
+                        if not suppress_status:
+                            print status,
+        except(requests.exceptions.ConnectionError, requests.exceptions.RequestException, OSError):
+            _, ex, trace = sys.exc_info()
+            dl_err = 'Caught {n} exception: There was an error reading content from the Nexus response. Downloaded ' \
+                     'size: {s}.\n{e}'.format(n=ex.__class__.__name__, s=file_size_dl, t=retry_sec, e=str(ex))
+            log.warn(dl_err)
+            if try_num < max_retries:
+                log.info('Retrying download in {t} sec...'.format(t=retry_sec))
+                time.sleep(retry_sec)
+        else:
+            log.info('File download of size {s} completed without error: {f}'.format(s=file_size_dl, f=download_file))
+            download_success = True
+        try_num += 1
+
+    # Raise an exception if the download did not complete successfully
+    if not download_success:
+        msg = 'Unable to download file content from Nexus after {n} attempts'.format(n=max_retries)
+        if dl_err:
+            msg += '\n{m}'.format(m=dl_err)
+        log.error(msg)
+        raise RuntimeError(msg)
 
 
 def main():
