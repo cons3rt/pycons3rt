@@ -84,7 +84,7 @@ def run_cmd(command,log,error=True,ret=False):
     if code == 0:
         log.info('Successfully executed command {c}'.format(c=command))
         if ret:
-            return c, o
+            return result
     else:
         msg = 'There was a problem running command: {cmd} Return code {c} and produced output: {o}'.format(
         c=code, o=output, cmd=command)
