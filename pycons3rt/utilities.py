@@ -52,7 +52,7 @@ def install_jvmCerts(certPath=None,caStore=None,jhome=None):
                 'changeit','-trustcacerts','-file','{}'.format(cert),'-alias',
                 '{}'.format(cert[:-4]),'-keystore',caStore]
                 run_cmd(cmd,log)
-        except bash.CommandError: 
+        except CommandError: 
             log.error('Failed to import cert {}.'.format(cert))
 
 def run_cmd(command,log,error=True,ret=False):
@@ -77,7 +77,7 @@ def run_cmd(command,log,error=True,ret=False):
         result = bash.run_command(command, timeout_sec=60.0)
         code = result['code']
         output = result['output']
-    except bash.CommandError:
+    except CommandError:
         if error: 
             raise
 
@@ -90,7 +90,7 @@ def run_cmd(command,log,error=True,ret=False):
         c=code, o=output, cmd=command)
         log.error(msg)
         if error: 
-            raise bash.CommandError(msg)
+            raise CommandError(msg)
 
 if __name__ == '__main__':
     sys.exit('Pycons3rt Library File. Should not be called directly.')
