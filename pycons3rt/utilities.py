@@ -11,7 +11,7 @@ __version__ = '0.20161029'
 
 mod_logger = Logify.get_name() + '.utilities'
 
-def install_jvmCerts(self,certPath=None,caStore=None,jhome=None):
+def install_jvmCerts(certPath=None,caStore=None,jhome=None):
     """Will install all .crt/.pem files from certPath into
     caStore location.
     
@@ -20,7 +20,7 @@ def install_jvmCerts(self,certPath=None,caStore=None,jhome=None):
     :param jhome: (str) Path to java root
     :return: NONE
     """
-    log = logging.getLogger(self.cls_logger + '.install_jvmCerts')
+    log = logging.getLogger(mod_logger + '.install_jvmCerts')
     try:
         jhome = os.environ['JAVA_HOME']
     except KeyError as e:
