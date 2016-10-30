@@ -1,12 +1,20 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import iptc
+
+__author__ = 'Mac <mac@lokilabs.io>'
+__version__ = '0.20161029'
 
 class Iptables():
+
     def __init__(self):
         self.post_chain = iptc.Chain(iptc.Table(iptc.Table.NAT), 'POSTROUTING')
         self.pre_chain = iptc.Chain(iptc.Table(iptc.Table.NAT), 'PREROUTING')
         self.in_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), 'INPUT')
         self.out_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), 'OUTPUT')
         self.fwd_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), 'FORWARD')
-
 
     def ipt_flush(self):
         log = logging.getLogger(self.cls_logger + '.ipt_flush')
