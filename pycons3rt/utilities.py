@@ -21,7 +21,6 @@ def install_jvmCerts(self,certPath=None,caStore=None,jhome=None):
     :return: NONE
     """
     log = logging.getLogger(self.cls_logger + '.install_jvmCerts')
-    if not
     try:
         jhome = os.environ['JAVA_HOME']
     except KeyError as e:
