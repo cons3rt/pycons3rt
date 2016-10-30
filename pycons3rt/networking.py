@@ -9,6 +9,8 @@ from pycons3rt.logify import Logify
 __author__ = 'Mac <mac@lokilabs.io>'
 __version__ = '0.20161029'
 
+mod_logger = Logify.get_name() + '.utilities'
+
 def get_ip_addresses():
     """
     :return: (dict) of devices and aliases with the IPv4 address
@@ -17,7 +19,7 @@ def get_ip_addresses():
     # BUG: if there are more than one IPs on an interfaces, current
     # code will not detect one of them. SO TODO
 
-    log = logging.getLogger(self.cls_logger + '.get_ip_addresses')
+    log = logging.getLogger(mod_logger + '.get_ip_addresses')
     devices = {}
     interfaces = netifaces.interfaces()
     for int in interfaces:
