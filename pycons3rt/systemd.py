@@ -17,7 +17,8 @@ import logging
 from logify import Logify
 from dbus import SystemBus, Interface
 
-__author__ = 'Mac'
+__author__ = 'Mac <mac@lokilabs.io>'
+__version__ = '0.20161029'
 
 mod_logger = Logify.get_name() + '.systemd'
 
@@ -138,3 +139,5 @@ class Systemd():
 		except Exception as e:
 			log.error('Failed to enable process {}: Error: {}'.format(process,str(e)))
 
+if __name__ == '__main__':
+    sys.exit('Pycons3rt Library File. Should not be called directly.')
