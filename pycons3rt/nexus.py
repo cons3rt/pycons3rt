@@ -36,6 +36,62 @@ requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.SNIMissingWarning)
 
 
+def query_nexus(query_url, timeout_sec):
+    """Queries Nexus for an artifact
+
+    :param query_url: (str) Query URL
+    :param timeout_sec: (int) query timeout
+    :return: requests.Response object
+    :raises: RuntimeError
+    """
+    log = logging.getLogger(mod_logger + '.query_nexus')
+
+    # Attempt to query Nexus
+    retry_sec = 5
+    max_retries = 6
+    try_num = 1
+    query_success = False
+    nexus_response = None
+    while try_num <= max_retries:
+        if query_success:
+            break
+        log.debug('Attempt # {n} of {m} to query the Nexus URL: {u}'.format(n=try_num, u=query_url, m=max_retries))
+        try:
+            nexus_response = requests.get(query_url, stream=True, timeout=timeout_sec)
+        except requests.exceptions.Timeout:
+            _, ex, trace = sys.exc_info()
+            msg = 'Caught {n} exception: Nexus initial query timed out after {t} seconds:\n{e}'.format(
+                n=ex.__class__.__name__, t=timeout_sec, r=retry_sec, e=str(ex))
+            log.warn(msg)
+            if try_num < max_retries:
+                log.info('Retrying query in {t} sec...'.format(t=retry_sec))
+                time.sleep(retry_sec)
+        except requests.exceptions.RequestException:
+            _, ex, trace = sys.exc_info()
+            msg = 'Caught {n} exception: Nexus initial query failed with the following exception:\n{e}'.format(
+                n=ex.__class__.__name__, r=retry_sec, e=str(ex))
+            log.warn(msg)
+            if try_num < max_retries:
+                log.info('Retrying query in {t} sec...'.format(t=retry_sec))
+                time.sleep(retry_sec)
+        else:
+            query_success = True
+        try_num += 1
+
+    if not query_success:
+        msg = 'Unable to query Nexus after {m} attempts using URL: {u}'.format(
+            u=query_url, m=max_retries)
+        log.error(msg)
+        raise RuntimeError(msg)
+
+    if nexus_response.status_code != 200:
+        msg = 'Nexus request returned code {c}, unable to query Nexus using URL: {u}'.format(
+            u=query_url, c=nexus_response.status_code)
+        log.error(msg)
+        raise RuntimeError(msg)
+    return nexus_response
+
+
 def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=600, **kwargs):
     """Retrieves an artifact from Nexus
 
@@ -131,80 +187,49 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
     if classifier is not None:
         params = params + '&c=' + classifier
 
+    # Build the query URL
     query_url = nexus_url + '?' + params
-    log.info('Attempting to download the artifact using URL:  {u}'.format(u=query_url))
 
-    # Attempt to query Nexus
-    retry_sec = 5
-    max_retries = 6
-    try_num = 1
-    query_success = False
-    nexus_response = None
-    while try_num <= max_retries:
-        if query_success:
-            break
-        log.debug('Attempt # {n} of {m} to query the Nexus URL: {u}'.format(n=try_num, u=query_url, m=max_retries))
-        try:
-            nexus_response = requests.get(query_url, stream=True, timeout=timeout_sec)
-        except requests.exceptions.Timeout:
-            _, ex, trace = sys.exc_info()
-            msg = 'Caught {n} exception: Nexus download timed out after {t} seconds:\n{e}'.format(
-                n=ex.__class__.__name__, t=timeout_sec, r=retry_sec, e=str(ex))
-            log.warn(msg)
-            if try_num < max_retries:
-                log.info('Retrying query in {t} sec...'.format(t=retry_sec))
-                time.sleep(retry_sec)
-        except requests.exceptions.RequestException:
-            _, ex, trace = sys.exc_info()
-            msg = 'Caught {n} exception: Nexus download failed with the following exception:\n{e}'.format(
-                n=ex.__class__.__name__, r=retry_sec, e=str(ex))
-            log.warn(msg)
-            if try_num < max_retries:
-                log.info('Retrying query in {t} sec...'.format(t=retry_sec))
-                time.sleep(retry_sec)
-        else:
-            query_success = True
-        try_num += 1
-
-    if not query_success:
-        msg = 'Unable to download the artifact from Nexus with URL after {m} attempts: {u}'.format(
-            u=query_url, m=max_retries)
-        log.error(msg)
-        raise RuntimeError(msg)
-
-    if nexus_response.status_code != 200:
-        msg = 'Nexus request returned code {c}, unable to download from Nexus using query URL: {u}'.format(
-            u=query_url, c=nexus_response.status_code)
-        log.error(msg)
-        raise RuntimeError(msg)
-
-    # Attempt to get the content-length
-    file_size = 0
-    try:
-        file_size = int(nexus_response.headers['Content-Length'])
-    except(KeyError, ValueError):
-        log.debug('Could not get Content-Length, suppressing download status...')
-        suppress_status = True
-    else:
-        log.info('Artifact file size: {s}'.format(s=file_size))
-
-    # Determine the full download file path
-    file_name = nexus_response.url.split('/')[-1]
-    download_file = os.path.join(destination_dir, file_name)
-
-    # Attempt to download the content from the response
-    log.info('Attempting to download content of size {s} from Nexus to file: {d}'.format(s=file_size, d=download_file))
+    # Set up for download attempts
     retry_sec = 5
     max_retries = 6
     try_num = 1
     download_success = False
     dl_err = None
 
+    # Start the retry loop
     while try_num <= max_retries:
 
         # Break the loop if the download was successful
         if download_success:
             break
+
+        log.info('Attempting to query Nexus for the Artifact using URL:  {u}'.format(u=query_url))
+        try:
+            nexus_response = query_nexus(query_url=query_url, timeout_sec=timeout_sec)
+        except RuntimeError:
+            _, ex, trace = sys.exc_info()
+            msg = 'Caught {n} exception: There was a problem querying Nexus URL: {u}\n{e}'.format(
+                n=ex.__class__.__name__, u=query_url, e=str(ex))
+            log.error(msg)
+            raise RuntimeError, msg, trace
+
+        # Attempt to get the content-length
+        file_size = 0
+        try:
+            file_size = int(nexus_response.headers['Content-Length'])
+        except(KeyError, ValueError):
+            log.debug('Could not get Content-Length, suppressing download status...')
+            suppress_status = True
+        else:
+            log.info('Artifact file size: {s}'.format(s=file_size))
+
+        # Determine the full download file path
+        file_name = nexus_response.url.split('/')[-1]
+        download_file = os.path.join(destination_dir, file_name)
+
+        # Attempt to download the content from the response
+        log.info('Attempting to download content of size {s} from Nexus to file: {d}'.format(s=file_size, d=download_file))
 
         # Remove the existing file if it exists
         if os.path.isfile(download_file):
