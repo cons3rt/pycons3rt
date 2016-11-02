@@ -1,0 +1,14 @@
+NAME={{ deviceName }}
+GATEWAY={{ gateway }}
+DNS1={{ dns }}
+DEVICE={{ deviceName }}
+ONBOOT=yes
+USERCTL=no
+BOOTPROTO=static
+NETMASK={{ netmask }}
+IPADDR={{ ip }}
+PEERDNS=no
+
+check_link_down() {
+ return 1; 
+}
