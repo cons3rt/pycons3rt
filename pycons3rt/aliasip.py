@@ -202,6 +202,51 @@ def alias_ip_address(ip_address, interface):
         log.info('This system is not on AWS, no additional configuration required')
 
 
+def set_source_ip_for_interface(ip_address, device_num=0):
+    """Configures the source IP address for a Linux interface
+
+    :param ip_address: (str) IP address to configure as the source
+    :param device_num: (int) Integer interface device number to configure
+    :return: None
+    :raises: TypeError, ValueError, OSError
+    """
+    log = logging.getLogger(mod_logger + '.alias_ip_address')
+    if not isinstance(device_num, int) or not isinstance(device_num, basestring):
+        msg = 'arg device_num should be an int, or string representation of an int'
+        log.error(msg)
+        raise TypeError(msg)
+    if not isinstance(ip_address, basestring):
+        msg = 'arg ip_address must be a string'
+        log.error(msg)
+        raise TypeError(msg)
+    if not validate_ip_address(ip_address=ip_address):
+        msg = 'The arg ip_address was found to be an invalid IP address.  Please pass a valid IP address'
+        log.error(msg)
+        raise ValueError(msg)
+
+    # Build the command
+    # iptables -t nat -I POSTROUTING -o eth0 -s ${RA_ORIGINAL_IP} -j SNAT --to-source
+    device_num_str = str(device_num)
+
+    command = ['iptables', '-t', 'nat', '-I', 'POSTROUTING', '-o', 'eth{d}'.format(d=device_num_str), '-s', ip_address,
+               '-j', 'SNAT', '--to-source']
+    log.info('Running command: {c}'.format(c=command))
+    try:
+        result = run_command(command, timeout_sec=20)
+    except CommandError:
+        _, ex, trace = sys.exc_info()
+        msg = 'There was a problem running iptables command: {c}\n{e}'.format(c=' '.join(command), e=str(ex))
+        log.error(msg)
+        raise OSError, msg, trace
+
+    if int(result['code']) != 0:
+        msg = 'The iptables command produced an error with exit code: {c}, and output:\n{o}'.format(
+            c=result['code'], o=result['output'])
+        log.error(msg)
+        raise OSError(msg)
+    log.info('Successfully configured the source IP for eth{d} to be: {i}'.format(d=device_num_str, i=ip_address))
+
+
 def main():
     """Sample usage for this python module
 
