@@ -72,6 +72,9 @@ class Deployment(object):
         self.cons3rt_role_name = ''
         self.asset_dir = ''
         self.media_dir = ''
+        self.platform = platform.system()
+        if self.platform == 'Linux':
+            self.dist = platform.dist()
         try:
             self.set_deployment_home()
             self.read_deployment_properties()
