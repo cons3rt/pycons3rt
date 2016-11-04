@@ -100,6 +100,8 @@ def disable_interface(interfaces):
     #TODO
 
 def add_cons3rt_hosts():
+    log = logging.getLogger(mod_logger + '.add_cons3rt_hosts')
+
     cons3rt_ip_map = {'messaging.milcloud.ceif.hpc.mil' : '10.220.101.60', 
         'cons3rt.milcloud.ceif.hpc.mil': '10.220.101.60' ,
         'assetdb.milcloud.ceif.hpc.mil' : '10.220.101.63'}
