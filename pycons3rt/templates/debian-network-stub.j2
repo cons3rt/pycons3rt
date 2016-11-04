@@ -1,0 +1,9 @@
+# Deployment Properties Assigned
+auto {{ deviceName }}
+iface {{ deviceName }} inet static
+    address {{ ip }}
+    netmask {{ mask }}
+    gateway {{ gw }}
+    dns-nameservers {{ dns }} 
+    dns-domain {{ domainName }}
+    dns-search {{ domainName }}

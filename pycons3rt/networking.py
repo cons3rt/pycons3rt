@@ -6,6 +6,8 @@ import jinja2
 import logging
 import netifaces
 from pycons3rt.logify import Logify
+from pycons3rt.systemd import Systemd
+from pycons3rt.deployment import Deployment
 
 __author__ = 'Mac <mac@lokilabs.io>'
 __version__ = '0.20161102'
@@ -30,6 +32,9 @@ def get_ip_addresses():
             log.info('Found ip {} on interface {}.'.format(ipaddr,int))
         except KeyError as e:
             log.warn('Interface {} does not have a valid IPv4 address.'.format(int))
+        except as e:
+            log.error('Unknown error: {}'.format(str(e)))
+            raise
     return devices
 
 def get_gateway(interface=None,default=False):
@@ -40,8 +45,9 @@ def get_gateway(interface=None,default=False):
             defaultGW = netifaces.gateways()['default'][netifaces.AF_INET][0]
             log.info('Default gateway found as: {}'.format(defaultGW))
             return defaultGW
-        except:
+        except as e:
             log.error('Failed to find default gateway. Error: {}'.format(str(e)))
+            raise
     elif interface:
         try:
             for list in netifaces.gateways()[netifaces.AF_INET]:
@@ -50,6 +56,7 @@ def get_gateway(interface=None,default=False):
                     return list[0]
         except:
             log.error('Failed to find gateway for interface: {}'.format(interface))
+            raise
     else:
         log.error('No valid lookup specified, exiting.')
 
@@ -64,7 +71,7 @@ def add_routes(interface,routes):
     except IOError as e:
         log.error('Failed to open route file. Error: {}'.format(str(e)))
 
-def configure_interface(interface,confguration,template=None):
+def configure_interface(interface,confguration,template=None,immediate=False):
     log = logging.getLogger(mod_logger + '.configure_interface')
 
     if not template:
@@ -81,10 +88,27 @@ def configure_interface(interface,confguration,template=None):
     except IOError:
         log.error('Failed to open interface file for writing. Interface: {}'.format(interface))
         raise
-    except:
+    except as e:
         log.error('Unknown error: {}'.format(str(e)))
         raise
-        
+
+    if immediate:
+        Systemd().restart('network.service')
+        log.info('Configuration change made active.')
+
+def disable_interface(interfaces):
+    #TODO
+
+def add_cons3rt_hosts():
+    cons3rt_ip_map = {'messaging.milcloud.ceif.hpc.mil' : '10.220.101.60', 
+        'cons3rt.milcloud.ceif.hpc.mil': '10.220.101.60' ,
+        'assetdb.milcloud.ceif.hpc.mil' : '10.220.101.63'}
+    cons3rt_ip_map['ra'] = Deployment().get_value('cons3rt.deploymentRun.virtRealm.remoteAccess.Ip')
+    log.info('Adding host entries for cons3rt')
+    with open('/etc/hosts', 'a') as hosts:
+        for k, v in cons3rt_ip_map.iteritems():
+            hosts.write('{v}    {k}\n'.format(v=v,k=k))
+
 def _renderFullpath(tpl_path, context):
     log = logging.getLogger(mod_logger + '._renderFullPath')
 
@@ -99,8 +123,6 @@ def _renderDefault(tpl_name, context):
     log.debug('Rendering template from pycons3rt dir: {}'.format(tpl_name))
     return jinja2.Environment(loader=PackageLoader('pycons3rt', 'templates')
         ).get_template(tpl_name).render(context)
-
-
 
 if __name__ == '__main__':
     sys.exit('Pycons3rt Library File. Should not be called directly.')
