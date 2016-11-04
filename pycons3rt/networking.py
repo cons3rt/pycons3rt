@@ -32,7 +32,7 @@ def get_ip_addresses():
             log.info('Found ip {} on interface {}.'.format(ipaddr,int))
         except KeyError as e:
             log.warn('Interface {} does not have a valid IPv4 address.'.format(int))
-        except as e:
+        except:
             log.error('Unknown error: {}'.format(str(e)))
             raise
     return devices
@@ -45,7 +45,7 @@ def get_gateway(interface=None,default=False):
             defaultGW = netifaces.gateways()['default'][netifaces.AF_INET][0]
             log.info('Default gateway found as: {}'.format(defaultGW))
             return defaultGW
-        except as e:
+        except:
             log.error('Failed to find default gateway. Error: {}'.format(str(e)))
             raise
     elif interface:
@@ -88,7 +88,7 @@ def configure_interface(interface,confguration,template=None,immediate=False):
     except IOError:
         log.error('Failed to open interface file for writing. Interface: {}'.format(interface))
         raise
-    except as e:
+    except:
         log.error('Unknown error: {}'.format(str(e)))
         raise
 
@@ -97,6 +97,8 @@ def configure_interface(interface,confguration,template=None,immediate=False):
         log.info('Configuration change made active.')
 
 def disable_interface(interfaces):
+    log = logging.getLogger(mod_logger + '.disable_interface')
+    log.warn("NOT IMPLEMENTED")
     #TODO
 
 def add_cons3rt_hosts():
