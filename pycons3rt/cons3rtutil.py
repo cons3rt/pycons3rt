@@ -10,7 +10,6 @@ import os
 import logging
 import random
 import string
-import re
 
 from logify import Logify
 from bash import run_command
@@ -22,8 +21,17 @@ __author__ = 'Joe Yennaco'
 # Set up logger name for this module
 mod_logger = Logify.get_name() + '.cons3rtutil'
 
+# Directory containing the Otto secrets file
+_secrets_file_dir = '/root/bin/update_env/environments'
+
 # Path to the cons3rt-otto.txt file
-_secrets_file = '/root/cons3rt-otto.txt'
+_secrets_file = os.path.join(_secrets_file_dir, 'cons3rt-otto.txt')
+
+# Path to the cons3rt-otto.txt file
+_secrets_file_encrypted = os.path.join(_secrets_file_dir, 'cons3rt-otto.enc')
+
+# Path to the decrypt util
+_secrets_util = '/root/bin/update_env/tools/pass_file.sh'
 
 
 class Cons3rtUtilError(Exception):
@@ -68,6 +76,14 @@ class Cons3rtUtil(object):
             raise Cons3rtUtilError(msg)
 
         # Get the admin user password
+        try:
+            decrypt_secrets_file()
+        except OSError:
+            _, ex, trace = sys.exc_info()
+            msg = 'Unable to determine the CONS3RT admin user password, Otto secrets file not found\n{e}'.format(
+                e=str(ex))
+            log.error(msg)
+            raise  Cons3rtUtilError, msg, trace
         log.info('Getting the admin CONS3RT user password...')
         self.admin_user = 'admin'
         self.admin_pass = ''
@@ -77,6 +93,12 @@ class Cons3rtUtil(object):
                 for line in f:
                     if line.startswith('ADMIN_PASS='):
                         self.admin_pass = line.split('=')[1].strip()
+            log.debug('Running the Otto utility to delete the secrets file...')
+            try:
+                delete_secrets_file()
+            except OSError:
+                _, ex, trace = sys.exc_info()
+                log.warn('There was a problem cleaning up the decrypted secrets file\n{e}'.format(e=str(ex)))
         else:
             msg = 'File not found: {f}'.format(f=self.secrets_file)
             raise Cons3rtUtilError(msg)
@@ -407,6 +429,66 @@ class Cons3rtUtil(object):
         log.info('Successfully generated ReST key for user {u} in project {p}: {k}'.format(
             k=rest_key, u=user, p=project))
         return rest_key
+
+
+def decrypt_secrets_file():
+    """Decrypt the Otto secrets file
+
+    :return: None
+    :raises: OSError
+    """
+    log = logging.getLogger(mod_logger + '.decrypt_secrets_file')
+
+    if not os.path.isfile(_secrets_util):
+        msg = 'Otto decryption utility not found: {f}'.format(f=_secrets_util)
+        log.error(msg)
+        raise OSError(msg)
+
+    if not os.path.isfile(_secrets_file_encrypted):
+        msg = 'Unable to find the encrypted Otto secrets file: {f}'.format(f=_secrets_file_encrypted)
+        log.error(msg)
+        raise OSError(msg)
+
+    # build the decryption command
+    command = [_secrets_util, 'decode', _secrets_file_dir]
+    try:
+        result = run_command(command, timeout_sec=30)
+    except CommandError:
+        _, ex, trace = sys.exc_info()
+        msg = 'Unable to decode the Encrypted Otto secrets file: {f}\n{e}'.format(f=_secrets_file_encrypted, e=str(ex))
+        log.error(msg)
+        raise OSError, msg, trace
+
+    if not os.path.isfile(_secrets_file):
+        msg = 'Decrypted Otto secrets file not found, it may not have decoded successfully: {f}'.format(f=_secrets_file)
+        log.error(msg)
+        raise OSError(msg)
+    log.info('Succesfully decoded Otto secrets file: {f}'.format(f=_secrets_file))
+
+
+def delete_secrets_file():
+    """Runs Otto secret file cleaner
+
+    :return: None
+    :raises: OSError
+    """
+    log = logging.getLogger(mod_logger + '.decrypt_secrets_file')
+
+    if not os.path.isfile(_secrets_util):
+        msg = 'Otto decryption utility not found: {f}'.format(f=_secrets_util)
+        log.error(msg)
+        raise OSError(msg)
+
+    # build the decryption command
+    command = [_secrets_util, 'clean', _secrets_file_dir]
+    try:
+        run_command(command, timeout_sec=30)
+    except CommandError:
+        _, ex, trace = sys.exc_info()
+        msg = 'Unable to clean the Decrypted Otto secrets file: {f}\n{e}'.format(f=_secrets_file_encrypted, e=str(ex))
+        log.error(msg)
+        raise OSError, msg, trace
+    log.info('Succesfully cleaned up Otto secrets file: {f}'.format(f=_secrets_file))
 
 
 def generate_cons3rt_password():
