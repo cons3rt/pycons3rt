@@ -74,7 +74,7 @@ def run_cmd(command,log,error=True,ret=False):
         log.error('Command is not a list or string. Good job at being bad.')
 
     try:
-        result = bash.run_command(command, timeout_sec=60.0)
+        result = run_command(command, timeout_sec=60.0)
         code = result['code']
         output = result['output']
     except CommandError:
