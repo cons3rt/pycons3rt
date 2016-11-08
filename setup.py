@@ -3,7 +3,7 @@
 
 from distutils.core import setup
 
-PACKAGES = ['pycons3rt', 'pycons3rt.awsapi']
+PACKAGES = ['pycons3rt', 'pycons3rt.awsapi', 'pycons3rt.templates']
 
 
 def get_init_val(val, packages=PACKAGES):
