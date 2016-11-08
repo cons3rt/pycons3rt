@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# pragma pylint: disable=W1202,C0103
 
 import os
 import sys
@@ -25,19 +26,19 @@ def get_ip_addresses():
     log = logging.getLogger(mod_logger + '.get_ip_addresses')
     devices = {}
     interfaces = netifaces.interfaces()
-    for int in interfaces:
+    for face in interfaces:
         try:
-            ipaddr = (netifaces.ifaddresses(int)[netifaces.AF_INET])[0]['addr']
-            devices[int] = ipaddr
-            log.info('Found ip {} on interface {}.'.format(ipaddr,int))
+            ipaddr = (netifaces.ifaddresses(face)[netifaces.AF_INET])[0]['addr']
+            devices[face] = ipaddr
+            log.info('Found ip {} on interface {}.'.format(ipaddr, face))
         except KeyError as e:
-            log.warn('Interface {} does not have a valid IPv4 address.'.format(int))
+            log.warn('Interface {} does not have a valid IPv4 address.'.format(face))
         except:
             log.error('Unknown error: {}'.format(str(e)))
             raise
     return devices
 
-def get_gateway(interface=None,default=False):
+def get_gateway(interface=None, default=False):
     log = logging.getLogger(mod_logger + '.get_gateway')
 
     if default:
@@ -50,28 +51,28 @@ def get_gateway(interface=None,default=False):
             raise
     elif interface:
         try:
-            for list in netifaces.gateways()[netifaces.AF_INET]:
-                if interface in list:
-                    log.info('Found gateway {} for interface {}'.format(list[0],interface))
-                    return list[0]
+            for gw in netifaces.gateways()[netifaces.AF_INET]:
+                if interface in gw:
+                    log.info('Found gateway {} for interface {}'.format(gw[0], interface))
+                    return gw[0]
         except:
             log.error('Failed to find gateway for interface: {}'.format(interface))
             raise
     else:
         log.error('No valid lookup specified, exiting.')
 
-def add_routes(interface,routes):
+def add_routes(interface, routes):
     log = logging.getLogger(mod_logger + '.add_routes')
 
     try:
-        with open('/etc/sysconfig/network-scripts/route-{}'.format(interface), 'a') as routes:
+        with open('/etc/sysconfig/network-scripts/route-{}'.format(interface), 'a') as routeFile:
             for ip, gw in routes.iteritems():
-                routes.write('{} via {}\n'.format(ip,gw))
-                log.info('Added route to {} via {}'.format(ip,gw))
+                routeFile.write('{} via {}\n'.format(ip, gw))
+                log.info('Added route to {} via {}'.format(ip, gw))
     except IOError as e:
         log.error('Failed to open route file. Error: {}'.format(str(e)))
 
-def configure_interface(interface,configuration,template=None,immediate=False):
+def configure_interface(interface, configuration, template=None, immediate=False):
     log = logging.getLogger(mod_logger + '.configure_interface')
 
     if not template:
@@ -81,14 +82,14 @@ def configure_interface(interface,configuration,template=None,immediate=False):
     else:
         output = _renderFullpath(template, configuration)
 
-    try:        
+    try:
         with open('/etc/sysconfig/network-scripts/ifcfg-{}'.format(interface), 'w+') as ifcfg:
             ifcfg.write(output)
         log.info('Wrote network configuration file for interface: {}'.format(interface))
     except IOError:
         log.error('Failed to open interface file for writing. Interface: {}'.format(interface))
         raise
-    except:
+    except Exception as e:
         log.error('Unknown error: {}'.format(str(e)))
         raise
 
@@ -104,29 +105,29 @@ def disable_interface(interfaces):
 def add_cons3rt_hosts():
     log = logging.getLogger(mod_logger + '.add_cons3rt_hosts')
 
-    cons3rt_ip_map = {'messaging.milcloud.ceif.hpc.mil' : '10.220.101.60', 
-        'cons3rt.milcloud.ceif.hpc.mil': '10.220.101.60' ,
-        'assetdb.milcloud.ceif.hpc.mil' : '10.220.101.63'}
+    cons3rt_ip_map = {'messaging.milcloud.ceif.hpc.mil' : '10.220.101.60',
+                      'cons3rt.milcloud.ceif.hpc.mil': '10.220.101.60',
+                      'assetdb.milcloud.ceif.hpc.mil' : '10.220.101.63'}
     cons3rt_ip_map['ra'] = Deployment().get_value('cons3rt.deploymentRun.virtRealm.remoteAccess.Ip')
     log.info('Adding host entries for cons3rt')
     with open('/etc/hosts', 'a') as hosts:
         for k, v in cons3rt_ip_map.iteritems():
-            hosts.write('{v}    {k}\n'.format(v=v,k=k))
+            hosts.write('{v}    {k}\n'.format(v=v, k=k))
 
 def _renderFullpath(tpl_path, context):
     log = logging.getLogger(mod_logger + '._renderFullPath')
 
     path, filename = os.path.split(tpl_path)
-    log.debug('Rendering template from path: {} , Template: {}'.format(path,filename))
+    log.debug('Rendering template from path: {} , Template: {}'.format(path, filename))
     return jinja2.Environment(loader=jinja2.FileSystemLoader(path or './')
-        ).get_template(filename).render(context)
+                             ).get_template(filename).render(context)
 
 def _renderDefault(tpl_name, context):
     log = logging.getLogger(mod_logger + '._renderDefault')
 
     log.debug('Rendering template from pycons3rt dir: {}'.format(tpl_name))
     return jinja2.Environment(loader=jinja2.PackageLoader('pycons3rt', 'templates')
-        ).get_template(tpl_name).render(context)
+                             ).get_template(tpl_name).render(context)
 
 if __name__ == '__main__':
     sys.exit('Pycons3rt Library File. Should not be called directly.')
