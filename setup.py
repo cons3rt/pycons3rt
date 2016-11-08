@@ -3,7 +3,7 @@
 
 from distutils.core import setup
 
-PACKAGES = ['pycons3rt', 'pycons3rt.awsapi', 'pycons3rt.templates']
+PACKAGES = ['pycons3rt', 'pycons3rt.awsapi']
 
 
 def get_init_val(val, packages=PACKAGES):
@@ -22,7 +22,7 @@ setup(
     long_description=open('README.md').read(),
     author=get_init_val('author'),
     url=get_init_val('url'),
-    package_data={'': ['LICENSE', 'NOTICE']},
+    package_data={'': ['LICENSE', 'NOTICE'], 'pycons3rt': ['templates/*.j2']},
     license=get_init_val('license'),
     packages=PACKAGES
 )
