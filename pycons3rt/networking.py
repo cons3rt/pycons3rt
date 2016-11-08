@@ -125,7 +125,7 @@ def _renderDefault(tpl_name, context):
     log = logging.getLogger(mod_logger + '._renderDefault')
 
     log.debug('Rendering template from pycons3rt dir: {}'.format(tpl_name))
-    return jinja2.Environment(loader=PackageLoader('pycons3rt', 'templates')
+    return jinja2.Environment(loader=jinja2.PackageLoader('pycons3rt', 'templates')
         ).get_template(tpl_name).render(context)
 
 if __name__ == '__main__':
