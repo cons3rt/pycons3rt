@@ -71,7 +71,7 @@ def add_routes(interface,routes):
     except IOError as e:
         log.error('Failed to open route file. Error: {}'.format(str(e)))
 
-def configure_interface(interface,confguration,template=None,immediate=False):
+def configure_interface(interface,configuration,template=None,immediate=False):
     log = logging.getLogger(mod_logger + '.configure_interface')
 
     if not template:
