@@ -714,8 +714,14 @@ def set_hostname(new_hostname):
         raise
     log.info('Hostname command completed with code: {c}'.format(
         c=result['code']))
-    return result['code']
 
+    log.info('Writing new_hostname to /etc/hostname...')
+    try:
+        with open('/etc/hostname', 'w+') as h:
+            h.write(new_hostname)
+    except IOError as e:
+        log.error('Failed to write new hostname to /etc/hostname.\nError: {}'.format(e))
+        raise
 
 def set_ntp_server(server):
     """Sets the NTP server on Linux
