@@ -102,6 +102,24 @@ def disable_interface(interfaces):
     log.warn("NOT IMPLEMENTED")
     #TODO
 
+def rhel_network(config):
+    ''' Write rhel network file from configuration
+    :params config: (dict) must contain:
+                                 'gwDevice'
+                                 'gw'
+                                 'hostname'
+    '''
+    log = logging.getLogger(mod_logger + '.rhel_network')
+    tpl = 'rhel-network.j2'
+    log.info('Writing /etc/sysconfig/network...')
+    output = _renderDefault(tpl, config)
+    try:
+        with open('/etc/sysconfig/network', 'w+') as net:
+            net.write(output)
+    except IOError:
+        log.error('Failed to open /etc/sysconfig/network for writing.')
+        raise
+
 def add_cons3rt_hosts():
     log = logging.getLogger(mod_logger + '.add_cons3rt_hosts')
 
