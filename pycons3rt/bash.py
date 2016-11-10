@@ -1134,9 +1134,8 @@ def create_remote_host_marker_file(host, file_path):
     if code == 0:
         log.info('Marker file {f} successfully created on host {h}'.format(f=file_path, h=host))
     else:
-        msg = 'There was a problem checking the remote host {h} over SSH for marker file {f}, ' \
-              'command returned code {c} and produced output: {o}'.format(
-                h=host, f=file_path, c=code, o=output)
+        msg = 'There was a problem creating marker file {f} on remote host {h} over SSH, command returned code {c} ' \
+              'and produced output: {o}'.format(h=host, f=file_path, c=code, o=output)
         log.error(msg)
         raise CommandError(msg)
 
