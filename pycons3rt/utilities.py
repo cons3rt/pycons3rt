@@ -11,7 +11,7 @@ from pycons3rt.logify import Logify
 from pycons3rt.bash import run_command, CommandError
 
 __author__ = 'Mac <mac@lokilabs.io>'
-__version__ = '0.20161107'
+__version__ = '0.20161111'
 
 mod_logger = Logify.get_name() + '.utilities'
 
@@ -26,7 +26,7 @@ def install_jvmCerts(certPath=None, caStore=None, jhome=None):
     log = logging.getLogger(mod_logger + '.install_jvmCerts')
     try:
         jhome = os.environ['JAVA_HOME']
-    except KeyError as e:
+    except KeyError:
         log.warn('JAVA_HOME is not set in the environment.')
     if not jhome:
         with open('/etc/profile.d/java.sh', 'r') as java:
@@ -38,7 +38,19 @@ def install_jvmCerts(certPath=None, caStore=None, jhome=None):
             jhome = '/usr/java/latest'
 
     if not caStore:
-        caStore = '{}/lib/security/cacerts'.format(jhome)
+        try:
+            caStore = '{}/lib/security/cacerts'.format(jhome)
+            os.path.isfile(caStore)
+        except IOError:
+            log.warn('caStore was invalid.')
+        else:
+            log.warn('Setting caStore to RHEL/JDK HmC Location.')
+            caStore = '{}/jre/lib/security/cacerts'.format(jhome)
+    try:
+        os.path.isfile(caStore)
+    except IOError:
+        log.error('Path to caStore is invalid.')
+        raise
     if not certPath:
         log.error('Path to certificates not defined.')
         return
