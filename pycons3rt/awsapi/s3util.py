@@ -67,6 +67,8 @@ class S3Util(object):
         log = logging.getLogger(self.cls_logger + '.__init__')
         self.bucket_name = _bucket_name
         self.s3resource = boto3.resource('s3')
+        log.debug('Configuring S3 client with AWS Access key ID {k} and region {r}'.format(k=aws_access_key_id,
+                                                                                           r=region_name))
         try:
             self.client = boto3.client('s3',
                                        region_name=region_name,
