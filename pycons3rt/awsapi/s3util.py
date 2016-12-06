@@ -62,13 +62,16 @@ class S3Util(object):
         bucket (Bucket): S3 Bucket object for performing Bucket
             operations
     """
-    def __init__(self, _bucket_name):
+    def __init__(self, _bucket_name, region_name=None, aws_access_key_id=None, aws_secret_access_key=None):
         self.cls_logger = mod_logger + '.S3Util'
         log = logging.getLogger(self.cls_logger + '.__init__')
         self.bucket_name = _bucket_name
         self.s3resource = boto3.resource('s3')
         try:
-            self.client = boto3.client('s3')
+            self.client = boto3.client('s3',
+                                       region_name=region_name,
+                                       aws_access_key_id=aws_access_key_id,
+                                       aws_secret_access_key=aws_secret_access_key)
         except ClientError:
             _, ex, trace = sys.exc_info()
             msg = 'There was a problem connecting to S3, please check AWS CLI ' \
@@ -88,7 +91,7 @@ class S3Util(object):
         :return: None
         """
         log = logging.getLogger(self.cls_logger + '.validate_bucket')
-        log.info('Attempting to get bucket: %s', self.bucket_name)
+        log.info('Attempting to get bucket: {b}'.format(b=self.bucket_name))
         max_tries = 10
         count = 1
         while count <= max_tries:
