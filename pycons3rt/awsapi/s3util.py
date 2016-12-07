@@ -399,6 +399,9 @@ def download(download_info):
             aws_access_key_id = None
             aws_secret_access_key = None
 
+    log.debug('Configuring S3 client with AWS Access key ID {k} and region {r}'.format(
+        k=aws_access_key_id, r=region_name))
+
     # Establish an S3 client
     client = boto3.client('s3', region_name=region_name, aws_access_key_id=aws_access_key_id,
                           aws_secret_access_key=aws_secret_access_key)
