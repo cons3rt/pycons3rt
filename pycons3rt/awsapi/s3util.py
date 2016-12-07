@@ -55,30 +55,28 @@ class S3Util(object):
 
     Attributes:
         bucket_name (dict): Name of the S3 bucket to interact with.
-        client (boto3.client): High level client for interacting with
+        s3client (boto3.client): Low-level client for interacting with
             the AWS S3 service.
-        client (boto3.client): Boto S3 client
         s3resource (boto3.resource): High level AWS S3 resource
-        bucket (Bucket): S3 Bucket object for performing Bucket
-            operations
+        bucket (Bucket): S3 Bucket object for performing Bucket operations
     """
     def __init__(self, _bucket_name, region_name=None, aws_access_key_id=None, aws_secret_access_key=None):
         self.cls_logger = mod_logger + '.S3Util'
         log = logging.getLogger(self.cls_logger + '.__init__')
         self.bucket_name = _bucket_name
-        self.s3resource = boto3.resource('s3')
-        log.debug('Configuring S3 client with AWS Access key ID {k} and region {r}'.format(k=aws_access_key_id,
-                                                                                           r=region_name))
+
+        log.debug('Configuring S3 client with AWS Access key ID {k} and region {r}'.format(
+            k=aws_access_key_id, r=region_name))
+
+        self.s3resource = boto3.resource('s3', region_name=region_name, aws_access_key_id=aws_access_key_id,
+                                         aws_secret_access_key=aws_secret_access_key)
         try:
-            self.client = boto3.client('s3',
-                                       region_name=region_name,
-                                       aws_access_key_id=aws_access_key_id,
-                                       aws_secret_access_key=aws_secret_access_key)
+            self.s3client = boto3.client('s3', region_name=region_name, aws_access_key_id=aws_access_key_id,
+                                         aws_secret_access_key=aws_secret_access_key)
         except ClientError:
             _, ex, trace = sys.exc_info()
-            msg = 'There was a problem connecting to S3, please check AWS CLI ' \
-                  'and boto configuration, ensure credentials and region are ' \
-                  'set appropriately.\n{e}'.format(e=str(ex))
+            msg = 'There was a problem connecting to S3, please check AWS configuration or credentials provided, ' \
+                  'ensure credentials and region are set appropriately.\n{e}'.format(e=str(ex))
             log.error(msg)
             raise S3UtilError, msg, trace
         self.validate_bucket()
@@ -100,7 +98,7 @@ class S3Util(object):
             log.info('Attempting to connect to S3 bucket %s, try %s of %s',
                      self.bucket_name, count, max_tries)
             try:
-                self.client.head_bucket(Bucket=self.bucket_name)
+                self.s3client.head_bucket(Bucket=self.bucket_name)
             except ClientError as e:
                 _, ex, trace = sys.exc_info()
                 error_code = int(e.response['Error']['Code'])
@@ -159,7 +157,7 @@ class S3Util(object):
             log.info('Attempting to download file %s, try %s of %s', key,
                      count, max_tries)
             try:
-                self.client.download_file(
+                self.s3client.download_file(
                     Bucket=self.bucket_name, Key=key, Filename=destination)
             except ClientError:
                 if count >= max_tries:
@@ -322,7 +320,7 @@ class S3Util(object):
             return False
 
         try:
-            self.client.upload_file(
+            self.s3client.upload_file(
                 Filename=filepath, Bucket=self.bucket_name, Key=key)
         except ClientError as e:
             log.error('Unable to upload file %s to bucket %s as key %s:\n%s',
