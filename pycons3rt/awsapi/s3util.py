@@ -284,15 +284,15 @@ class S3Util(object):
         log = logging.getLogger(self.cls_logger + '.find_keys')
         matched_keys = []
         if not isinstance(regex, basestring):
-            log.error('regex argument is not a string')
+            log.error('regex argument is not a string, found: {t}'.format(t=regex.__class__.__name__))
             return None
-        log.info('Looking up S3 keys based on regex: %s', regex)
+        log.info('Looking up S3 keys based on regex: {r}'.format(r=regex))
         for item in self.bucket.objects.all():
-            log.debug('Checking if regex matches key: %s', item.key)
+            log.debug('Checking if regex matches key: {k}'.format(k=item.key))
             match = re.search(regex, item.key)
             if match:
                 matched_keys.append(item.key)
-        log.info('Found matching keys: %s', matched_keys)
+        log.info('Found matching keys: {k}'.format(k=matched_keys))
         return matched_keys
 
     def upload_file(self, filepath, key):
@@ -346,6 +346,10 @@ def download(download_info):
         key: (str) S3 key for the file to be downloaded
         dest_dir: (str) Full path destination directory
         bucket_name: (str) Name of the bucket to download from
+        credentials: (dict) containing AWS credential info (optional)
+            aws_region: (str) AWS S3 region
+            aws_access_key_id: (str) AWS access key ID
+            aws_secret_access_key: (str) AWS secret access key
     :return: (str) Downloaded file destination if the file was
         downloaded successfully
     :raises S3UtilError
@@ -354,7 +358,7 @@ def download(download_info):
 
     # Ensure the passed arg is a dict
     if not isinstance(download_info, dict):
-        msg = 'download_info arg should be a dict'
+        msg = 'download_info arg should be a dict, found: {t}'.format(t=download_info.__class__.__name__)
         raise TypeError(msg)
 
     # Check for and obtain required args
@@ -365,12 +369,32 @@ def download(download_info):
             log.error(msg)
             raise S3UtilError(msg)
 
+    log.debug('Processing download request: {r}'.format(r=download_info))
     key = download_info['key']
     dest_dir = download_info['dest_dir']
     bucket_name = download_info['bucket_name']
+    region_name = None
+    aws_access_key_id = None
+    aws_secret_access_key = None
+
+    try:
+        creds = download_info['credentials']
+    except KeyError:
+        log.debug('No credentials found for this download request')
+    else:
+        try:
+            region_name = creds['region_name']
+            aws_access_key_id = creds['aws_access_key_id']
+            aws_secret_access_key = creds['aws_secret_access_key']
+        except KeyError:
+            log.warn('Insufficient credentials found for download request')
+            region_name = None
+            aws_access_key_id = None
+            aws_secret_access_key = None
 
     # Establish an S3 client
-    client = boto3.client('s3')
+    client = boto3.client('s3', region_name=region_name, aws_access_key_id=aws_access_key_id,
+                          aws_secret_access_key=aws_secret_access_key)
 
     # Attempt to determine the file name from key
     filename = key.split('/')[-1]
@@ -414,7 +438,7 @@ def download(download_info):
             return destination
 
 
-def find_bucket_keys(bucket_name, regex):
+def find_bucket_keys(bucket_name, regex, region_name=None, aws_access_key_id=None, aws_secret_access_key=None):
     """Finds a list of S3 keys matching the passed regex
 
     Given a regular expression, this method searches the S3 bucket
@@ -423,19 +447,23 @@ def find_bucket_keys(bucket_name, regex):
 
     :param regex: (str) Regular expression to use is the key search
     :param bucket_name: (str) String S3 bucket name
+    :param region_name: (str) AWS region for the S3 bucket (optional)
+    :param aws_access_key_id: (str) AWS Access Key ID (optional)
+    :param aws_secret_access_key: (str) AWS Secret Access Key (optional)
     :return: Array of strings containing matched S3 keys
     """
     log = logging.getLogger(mod_logger + '.find_bucket_keys')
     matched_keys = []
     if not isinstance(regex, basestring):
-        log.error('regex argument is not a string')
+        log.error('regex argument is not a string, found: {t}'.format(t=regex.__class__.__name__))
         return None
     if not isinstance(bucket_name, basestring):
-        log.error('bucket_name argument is not a string')
+        log.error('bucket_name argument is not a string, found: {t}'.format(t=bucket_name.__class__.__name__))
         return None
 
     # Set up S3 resources
-    s3resource = boto3.resource('s3')
+    s3resource = boto3.resource('s3', region_name=region_name, aws_access_key_id=aws_access_key_id,
+                                aws_secret_access_key=aws_secret_access_key)
     bucket = s3resource.Bucket(bucket_name)
 
     log.info('Looking up S3 keys based on regex: {r}'.format(r=regex))
@@ -444,7 +472,7 @@ def find_bucket_keys(bucket_name, regex):
         match = re.search(regex, item.key)
         if match:
             matched_keys.append(item.key)
-    log.info('Found matching keys: %s', matched_keys)
+    log.info('Found matching keys: {k}'.format(k=matched_keys))
     return matched_keys
 
 
