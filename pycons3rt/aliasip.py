@@ -58,6 +58,47 @@ def validate_ip_address(ip_address):
         return True
 
 
+def ip_addr():
+    """Uses the ip addr command to enumerate IP addresses by device
+
+    :return: (dict) Containing device: ip_address
+    """
+    log = logging.getLogger(mod_logger + '.ip_addr')
+
+    ip_addr_output = {}
+
+    command = ['ip', 'addr']
+    try:
+        ip_addr_result = run_command(command, timeout_sec=20)
+    except CommandError:
+        _, ex, trace = sys.exc_info()
+        msg = 'There was a problem running command: {c}'.format(c=' '.join(command))
+        raise CommandError, msg, trace
+
+    ip_addr_lines = ip_addr_result['output'].split('\n')
+
+    for line in ip_addr_lines:
+        line = line.strip()
+        if line.startswith('inet6'):
+            continue
+        elif line.startswith('inet'):
+            parts = line.split()
+            try:
+                ip_address = parts[1].strip().split('/')[1]
+            except KeyError:
+                continue
+            else:
+                if not validate_ip_address(ip_address):
+                    continue
+                else:
+                    for part in parts:
+                        part = part.strip()
+                        if part.strip().startswith('eth'):
+                            device = part
+                            ip_addr_output[device] = ip_address
+    return ip_addr_output
+
+
 def alias_ip_address(ip_address, interface):
     """Adds an IP alias to a specific interface
 
@@ -202,10 +243,11 @@ def alias_ip_address(ip_address, interface):
         log.info('This system is not on AWS, no additional configuration required')
 
 
-def set_source_ip_for_interface(ip_address, device_num=0):
+def set_source_ip_for_interface(source_ip_address, desired_source_ip_address, device_num=0):
     """Configures the source IP address for a Linux interface
 
-    :param ip_address: (str) IP address to configure as the source
+    :param source_ip_address: (str) Source IP address to change
+    :param desired_source_ip_address: (str) IP address to configure as the source in outgoing packets
     :param device_num: (int) Integer interface device number to configure
     :return: None
     :raises: TypeError, ValueError, OSError
@@ -215,12 +257,20 @@ def set_source_ip_for_interface(ip_address, device_num=0):
         msg = 'arg device_num should be an int, or string representation of an int'
         log.error(msg)
         raise TypeError(msg)
-    if not isinstance(ip_address, basestring):
-        msg = 'arg ip_address must be a string'
+    if not isinstance(source_ip_address, basestring):
+        msg = 'arg source_ip_address must be a string'
         log.error(msg)
         raise TypeError(msg)
-    if not validate_ip_address(ip_address=ip_address):
-        msg = 'The arg ip_address was found to be an invalid IP address.  Please pass a valid IP address'
+    if not isinstance(desired_source_ip_address, basestring):
+        msg = 'arg desired_source_ip_address must be a string'
+        log.error(msg)
+        raise TypeError(msg)
+    if not validate_ip_address(ip_address=source_ip_address):
+        msg = 'The arg source_ip_address was found to be an invalid IP address.  Please pass a valid IP address'
+        log.error(msg)
+        raise ValueError(msg)
+    if not validate_ip_address(ip_address=desired_source_ip_address):
+        msg = 'The arg desired_source_ip_address was found to be an invalid IP address.  Please pass a valid IP address'
         log.error(msg)
         raise ValueError(msg)
 
@@ -228,8 +278,8 @@ def set_source_ip_for_interface(ip_address, device_num=0):
     # iptables -t nat -I POSTROUTING -o eth0 -s ${RA_ORIGINAL_IP} -j SNAT --to-source
     device_num_str = str(device_num)
 
-    command = ['iptables', '-t', 'nat', '-I', 'POSTROUTING', '-o', 'eth{d}'.format(d=device_num_str), '-s', ip_address,
-               '-j', 'SNAT', '--to-source']
+    command = ['iptables', '-t', 'nat', '-I', 'POSTROUTING', '-o', 'eth{d}'.format(d=device_num_str), '-s',
+               source_ip_address, '-j', 'SNAT', '--to-source', desired_source_ip_address]
     log.info('Running command: {c}'.format(c=command))
     try:
         result = run_command(command, timeout_sec=20)
@@ -244,7 +294,8 @@ def set_source_ip_for_interface(ip_address, device_num=0):
             c=result['code'], o=result['output'])
         log.error(msg)
         raise OSError(msg)
-    log.info('Successfully configured the source IP for eth{d} to be: {i}'.format(d=device_num_str, i=ip_address))
+    log.info('Successfully configured the source IP for eth{d} to be: {i}'.format(
+        d=device_num_str, i=desired_source_ip_address))
 
 
 def main():
