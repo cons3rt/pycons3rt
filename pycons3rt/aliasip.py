@@ -84,7 +84,7 @@ def ip_addr():
         elif line.startswith('inet'):
             parts = line.split()
             try:
-                ip_address = parts[1].strip().split('/')[1]
+                ip_address = parts[1].strip().split('/')[0]
             except KeyError:
                 continue
             else:
