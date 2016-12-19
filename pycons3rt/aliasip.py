@@ -211,7 +211,7 @@ def set_source_ip_for_interface(ip_address, device_num=0):
     :raises: TypeError, ValueError, OSError
     """
     log = logging.getLogger(mod_logger + '.alias_ip_address')
-    if not isinstance(device_num, int) or not isinstance(device_num, basestring):
+    if not isinstance(device_num, int) and not isinstance(device_num, basestring):
         msg = 'arg device_num should be an int, or string representation of an int'
         log.error(msg)
         raise TypeError(msg)
