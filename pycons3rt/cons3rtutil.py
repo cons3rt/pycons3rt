@@ -42,7 +42,7 @@ class Cons3rtUtilError(Exception):
 
 
 class Cons3rtUtil(object):
-    def __init__(self, cons3rt_fqdn, dep=None):
+    def __init__(self, cons3rt_fqdn, dep=None, admin_user=None, admin_password=None):
         self.cls_logger = mod_logger + '.Cons3rtUtil'
         log = logging.getLogger(self.cls_logger + '.__init__')
         self.dep = dep
@@ -76,36 +76,40 @@ class Cons3rtUtil(object):
             raise Cons3rtUtilError(msg)
 
         # Get the admin user password
-        try:
-            decrypt_secrets_file()
-        except OSError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to determine the CONS3RT admin user password, Otto secrets file not found\n{e}'.format(
-                e=str(ex))
-            log.error(msg)
-            raise  Cons3rtUtilError, msg, trace
-        log.info('Getting the admin CONS3RT user password...')
-        self.admin_user = 'admin'
-        self.admin_pass = ''
-        if os.path.isfile(self.secrets_file):
-            log.info('Reading file: {f}'.format(f=self.secrets_file))
-            with open(self.secrets_file, 'r') as f:
-                for line in f:
-                    if line.startswith('ADMIN_PASS='):
-                        self.admin_pass = line.split('=')[1].strip()
-            log.debug('Running the Otto utility to delete the secrets file...')
+        if admin_user is None or admin_password is None:
             try:
-                delete_secrets_file()
+                decrypt_secrets_file()
             except OSError:
                 _, ex, trace = sys.exc_info()
-                log.warn('There was a problem cleaning up the decrypted secrets file\n{e}'.format(e=str(ex)))
+                msg = 'Unable to determine the CONS3RT admin user password, Otto secrets file not found\n{e}'.format(
+                    e=str(ex))
+                log.error(msg)
+                raise  Cons3rtUtilError, msg, trace
+            log.info('Getting the admin CONS3RT user password...')
+            self.admin_user = 'admin'
+            self.admin_pass = ''
+            if os.path.isfile(self.secrets_file):
+                log.info('Reading file: {f}'.format(f=self.secrets_file))
+                with open(self.secrets_file, 'r') as f:
+                    for line in f:
+                        if line.startswith('ADMIN_PASS='):
+                            self.admin_pass = line.split('=')[1].strip()
+                log.debug('Running the Otto utility to delete the secrets file...')
+                try:
+                    delete_secrets_file()
+                except OSError:
+                    _, ex, trace = sys.exc_info()
+                    log.warn('There was a problem cleaning up the decrypted secrets file\n{e}'.format(e=str(ex)))
+            else:
+                msg = 'File not found: {f}'.format(f=self.secrets_file)
+                raise Cons3rtUtilError(msg)
+            if self.admin_pass == '':
+                msg = 'Could not find a value for ADMIN_PASS'
+                log.error(msg)
+                raise Cons3rtUtilError(msg)
         else:
-            msg = 'File not found: {f}'.format(f=self.secrets_file)
-            raise Cons3rtUtilError(msg)
-        if self.admin_pass == '':
-            msg = 'Could not find a value for ADMIN_PASS'
-            log.error(msg)
-            raise Cons3rtUtilError(msg)
+            self.admin_user = admin_user
+            self.admin_pass = admin_password
         self.rca = os.path.join(self.cons3rt_base, 'cons3rt', 'scripts', 'run_cons3rt_admin.sh')
         self.rsa = os.path.join(self.cons3rt_base, 'cons3rt', 'scripts', 'run_security_admin.sh')
 
