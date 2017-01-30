@@ -130,6 +130,8 @@ function install_prerequisites() {
 	# Install Python packages using PIP
 	run_and_check_status pip install awscli
 	run_and_check_status pip install boto3
+	run_and_check_status pip install netifaces
+	run_and_check_status pip install jinja2
 
 	# TODO requests prereq should move to the pyBART install asset
 	run_and_check_status pip install requests==2.10.0

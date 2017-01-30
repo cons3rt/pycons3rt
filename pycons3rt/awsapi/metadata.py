@@ -8,6 +8,9 @@ meta data service.
 """
 import logging
 import urllib
+import sys
+
+import netifaces
 
 # Pass ImportError on boto3 for offline assets
 try:
@@ -19,7 +22,6 @@ except ImportError:
     pass
 
 from pycons3rt.logify import Logify
-from pycons3rt.bash import get_mac_address
 
 
 __author__ = 'Joe Yennaco'
@@ -30,6 +32,12 @@ mod_logger = Logify.get_name() + '.awsapi.metadata'
 
 # AWS Meta Data Service URL
 metadata_url = 'http://169.254.169.254/latest/meta-data/'
+
+
+class AWSMetaDataError(Exception):
+    """Simple exception type for AWS meta data service errors
+    """
+    pass
 
 
 def is_aws():
@@ -99,9 +107,15 @@ def get_vpc_id_from_mac_address():
         log.info('This machine is not running in AWS, exiting...')
         return
 
-    mac_address = get_mac_address()
-    if not mac_address:
-        log.error('Unable to determine the mac address, cannot determine VPC ID')
+    # Get the primary interface MAC address to query the meta data service
+    log.debug('Attempting to determine the primary interface MAC address...')
+    try:
+        mac_address = get_primary_mac_address()
+    except AWSMetaDataError:
+        _, ex, trace = sys.exc_info()
+        msg = '{n}: Unable to determine the mac address, cannot determine VPC ID:\n{e}'.format(
+            n=ex.__class__.__name__, e=str(ex))
+        log.error(msg)
         return
 
     vpc_id_url = metadata_url + 'network/interfaces/macs/' + mac_address + '/vpc-id'
@@ -134,9 +148,15 @@ def get_owner_id_from_mac_address():
         log.info('This machine is not running in AWS, exiting...')
         return
 
-    mac_address = get_mac_address()
-    if not mac_address:
-        log.error('Unable to determine the mac address, cannot determine Owner ID')
+    # Get the primary interface MAC address to query the meta data service
+    log.debug('Attempting to determine the primary interface MAC address...')
+    try:
+        mac_address = get_primary_mac_address()
+    except AWSMetaDataError:
+        _, ex, trace = sys.exc_info()
+        msg = '{n}: Unable to determine the mac address, cannot determine Owner ID:\n{e}'.format(
+            n=ex.__class__.__name__, e=str(ex))
+        log.error(msg)
         return
 
     owner_id_url = metadata_url + 'network/interfaces/macs/' + mac_address + '/owner-id'
@@ -205,3 +225,22 @@ def get_region():
     # Strip of the last character to get the refgion
     region = availability_zone[:-1]
     return region
+
+
+def get_primary_mac_address():
+    """Determines the MAC address to use for querying the AWS
+    meta data service for network related queries
+
+    :return: (str) MAC address for the eth0 interface
+    :raises: AWSMetaDataError
+    """
+    log = logging.getLogger(mod_logger + '.get_primary_mac_address')
+    log.debug('Attempting to determine the MAC address for eth0...')
+    try:
+        mac_address = netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']
+    except Exception:
+        _, ex, trace = sys.exc_info()
+        msg = '{n}: Unable to determine the eth0 mac address for this system:\n{e}'.format(
+            n=ex.__class__.__name__, e=str(ex))
+        raise AWSMetaDataError, msg, trace
+    return mac_address
