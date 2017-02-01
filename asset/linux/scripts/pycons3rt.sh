@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Created by Joe Yennaco (8/29/2016)
+# Updated by J. Yennaco (2/1/2017) to include netifaces and jinja 2 as prerequisite packages
 
 # Set log commands
 logTag="pycons3rt-install"
