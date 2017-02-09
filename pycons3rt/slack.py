@@ -245,6 +245,38 @@ class Cons3rtSlacker(SlackMessage):
                 self.add_attachment(attachment)
         self.send()
 
+    def send_text_file(self, text_file):
+        """Sends a Slack message with the contents of a text file
+
+        :param: test_file: (str) Full path to text file to send
+        :return: None
+        :raises: Cons3rtSlackerError
+        """
+        log = logging.getLogger(self.cls_logger + '.send_text_file')
+
+        if not isinstance(text_file, basestring):
+            msg = 'arg text_file must be a string, found type: {t}'.format(t=text_file.__class__.__name__)
+            raise Cons3rtSlackerError(msg)
+
+        if not os.path.isfile(text_file):
+            msg = 'The provided text_file was not found or is not a file: {f}'.format(f=text_file)
+            raise Cons3rtSlackerError(msg)
+
+        log.info('Attempting to send a Slack message with the contents of file: {f}'.format(f=text_file))
+        try:
+            with open(text_file, 'r') as f:
+                file_text = f.read()
+        except (IOError, OSError):
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: There was a problem opening file: {f}\n{e}'.format(f=text_file, e=str(ex))
+            raise Cons3rtSlackerError, msg, trace
+
+        # Take the last 7000 characters
+        file_text_trimmed = file_text[-7000:]
+        attachment = SlackAttachment(fallback=file_text_trimmed, text=file_text_trimmed, color='#9400D3')
+        self.add_attachment(attachment)
+        self.send()
+
 
 def main():
     """Handles external calling for this module

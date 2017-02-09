@@ -95,11 +95,11 @@ class AssetMailer(object):
 
         if not isinstance(text_file, basestring):
             msg = 'arg text_file must be a string, found type: {t}'.format(t=text_file.__class__.__name__)
-            raise TypeError(msg)
+            raise AssetMailerError(msg)
 
         if not os.path.isfile(text_file):
             msg = 'The provided text_file was not found or is not a file: {f}'.format(f=text_file)
-            raise OSError(msg)
+            raise AssetMailerError(msg)
 
         # Determine sender/recipient
         if sender is None:
