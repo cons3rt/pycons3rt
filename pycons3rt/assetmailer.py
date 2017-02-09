@@ -84,7 +84,7 @@ class AssetMailer(object):
         log.debug('Searching for log files in directory: {d}'.format(d=self.cons3rt_agent_log_dir))
         for item in os.listdir(self.cons3rt_agent_log_dir):
             item_path = os.path.join(self.cons3rt_agent_log_dir, item)
-            if os.path.isfile(item):
+            if os.path.isfile(item_path):
                 log.info('Sending email with cons3rt agent log file: {f}'.format(f=item_path))
                 try:
                     self.send_text_file(text_file=item_path)
