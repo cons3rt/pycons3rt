@@ -9,6 +9,7 @@ import logging
 import argparse
 import os
 import sys
+import socket
 import smtplib
 from email.mime.text import MIMEText
 
@@ -22,6 +23,9 @@ __author__ = 'Joe Yennaco'
 
 # Set up logger name for this module
 mod_logger = Logify.get_name() + '.assetmailer'
+
+# Default SMTP server
+default_smtp_server = 'localhost'
 
 # Default sender email address
 default_sender_email = 'joe.yennaco@jackpinetech.com'
@@ -38,12 +42,13 @@ class AssetMailerError(Exception):
 
 class AssetMailer(object):
 
-    def __init__(self):
+    def __init__(self, smtp_server=default_smtp_server):
         """Creates an AssetMailer object
 
         :return: None
         """
         self.cls_logger = mod_logger + '.AssetMailer'
+        self.smtp_server = smtp_server
         if get_os() == 'Linux':
             self.cons3rt_agent_home = os.path.join(os.path.sep, 'opt', 'cons3rt-agent')
         elif get_os() == 'Windows':
@@ -133,17 +138,48 @@ class AssetMailer(object):
 
         # Set the SMTP server to be localhost
         log.debug('Sending email with subject {s} to {e}...'.format(s=subject, e=recipient))
+
         try:
-            s = smtplib.SMTP('localhost')
-            s.sendmail(sender, [recipient], mail_message.as_string())
-            s.quit()
-        except Exception:
+            s = smtplib.SMTP(self.smtp_server)
+        except (smtplib.SMTPConnectError, socket.timeout, socket.error):
             _, ex, trace = sys.exc_info()
-            msg = '{n}: There was a problem sending email message to {r}\n{e}'.format(
+            msg = '{n}: There was a problem connecting to SMTP server: {s}\n{e}'.format(
+                n=ex.__class__.__name__, s=self.smtp_server, e=str(ex))
+            raise AssetMailerError, msg, trace
+
+
+        s.set_debuglevel(debuglevel=__debug__)
+        try:
+            s.sendmail(sender, [recipient], mail_message.as_string())
+        except smtplib.SMTPRecipientsRefused:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: All recipients were refused, nobody got the mail: {r}:\n{e}'.format(
                 n=ex.__class__.__name__, r=recipient, e=str(ex))
+            raise AssetMailerError, msg, trace
+        except smtplib.SMTPSenderRefused:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: The server did not accept the sender address: {s}:\n{e}'.format(
+                n=ex.__class__.__name__, s=sender, e=str(ex))
+            raise AssetMailerError, msg, trace
+        except smtplib.SMTPHeloError:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: The server did not respond to the HELO greeting: {s}:\n{e}'.format(
+                n=ex.__class__.__name__, e=str(ex))
+            raise AssetMailerError, msg, trace
+        except smtplib.SMTPDataError:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: The server replied with an unexpected error code (other than a refusal of a recipient)\n{e}'.\
+                format(n=ex.__class__.__name__, r=recipient, e=str(ex))
+            raise AssetMailerError, msg, trace
+        except smtplib.SMTPConnectError:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: There was a connection error\n{e}'. \
+                format(n=ex.__class__.__name__, r=recipient, e=str(ex))
             raise AssetMailerError, msg, trace
         else:
             log.info('Sent email to: {r}'.format(r=recipient))
+        finally:
+            s.quit()
 
 
 def main():
