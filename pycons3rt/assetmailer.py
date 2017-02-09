@@ -28,7 +28,7 @@ mod_logger = Logify.get_name() + '.assetmailer'
 default_smtp_server = 'localhost'
 
 # Default sender email address
-default_sender_email = 'joe.yennaco@jackpinetech.com'
+default_sender_email = 'no-reply@cons3rt.com'
 
 # Default recipient email address
 default_recipient_email = 'joe.yennaco@jackpinetech.com'
