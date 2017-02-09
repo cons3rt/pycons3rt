@@ -238,7 +238,10 @@ class Cons3rtSlacker(SlackMessage):
                 except (IOError, OSError) as e:
                     log.warn('There was a problem opening file: {f}\n{e}'.format(f=item_path, e=e))
                     continue
-                attachment = SlackAttachment(fallback=file_text, text=file_text, color='#9400D3')
+
+                # Take the last 7000 characters
+                file_text_trimmed = file_text[-7000:]
+                attachment = SlackAttachment(fallback=file_text_trimmed, text=file_text_trimmed, color='#9400D3')
                 self.add_attachment(attachment)
         self.send()
 
