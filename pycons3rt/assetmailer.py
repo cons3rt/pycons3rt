@@ -60,7 +60,7 @@ class AssetMailer(object):
         self.recipient_email = self.dep.get_value('cons3rt.user.email')
         if self.recipient_email is None:
             self.recipient_email = default_recipient_email
-        self.subject = 'pyCONS3RT Asset Mailer: Run {n}[i]'.format(n=self.run_name, i=self.run_id)
+        self.subject = 'pyCONS3RT Asset Mailer: Run {n}[{i}]'.format(n=self.run_name, i=self.run_id)
 
     def __str__(self):
         return 'AssetMailer for Deployment Run ID: {i}'.format(i=self.run_id)
@@ -87,6 +87,8 @@ class AssetMailer(object):
                     msg = '{n}: There was a problem sending CONS3RT agent log file: {f}\n{e}'.format(
                         n=ex.__class__.__name__, f=item_path, e=str(ex))
                     raise AssetMailerError, msg, trace
+                else:
+                    log.info('Successfully sent email with file: {f}'.format(f=item_path))
 
     def send_text_file(self, text_file, sender=None, recipient=None):
         """Sends an email with the contents of the provided text file
