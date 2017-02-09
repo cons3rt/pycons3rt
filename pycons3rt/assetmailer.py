@@ -15,7 +15,6 @@ from email.mime.text import MIMEText
 
 # Set up logger name for this module
 from logify import Logify
-from osutil import get_os
 import deployment
 
 __author__ = 'Joe Yennaco'
@@ -49,17 +48,8 @@ class AssetMailer(object):
         """
         self.cls_logger = mod_logger + '.AssetMailer'
         self.smtp_server = smtp_server
-        if get_os() == 'Linux':
-            self.cons3rt_agent_home = os.path.join(os.path.sep, 'opt', 'cons3rt-agent')
-        elif get_os() == 'Windows':
-            self.cons3rt_agent_home = os.path.join('C:', os.path.sep, 'cons3rt-agent')
-        else:
-            self.cons3rt_agent_home = None
-        if self.cons3rt_agent_home:
-            self.cons3rt_agent_log_dir = os.path.join(self.cons3rt_agent_home, 'log')
-        else:
-            self.cons3rt_agent_log_dir = None
         self.dep = deployment.Deployment()
+        self.cons3rt_agent_log_dir = self.dep.cons3rt_agent_log_dir
         self.run_name = self.dep.get_value('cons3rt.deploymentRun.name')
         self.run_id = self.dep.get_value('cons3rt.deploymentRun.id')
         self.recipient_email = self.dep.get_value('cons3rt.user.email')
@@ -148,7 +138,7 @@ class AssetMailer(object):
             raise AssetMailerError, msg, trace
 
         # Set the SMTP log level
-        #s.set_debuglevel(debuglevel=__debug__)
+        # s.set_debuglevel(debuglevel=__debug__)
 
         # Set the SMTP server to be localhost
         log.debug('Sending email with subject {s} to {e}...'.format(s=subject, e=recipient))
@@ -166,7 +156,7 @@ class AssetMailer(object):
             raise AssetMailerError, msg, trace
         except smtplib.SMTPHeloError:
             _, ex, trace = sys.exc_info()
-            msg = '{n}: The server did not respond to the HELO greeting: {s}:\n{e}'.format(
+            msg = '{n}: The server did not respond to the HELO greeting\n{e}'.format(
                 n=ex.__class__.__name__, e=str(ex))
             raise AssetMailerError, msg, trace
         except smtplib.SMTPDataError:
@@ -205,7 +195,7 @@ def main():
     if args.file:
         try:
             am.send_text_file(text_file=args.file, sender=args.sender, recipient=args.recipient)
-        except Exception:
+        except AssetMailerError:
             _, ex, trace = sys.exc_info()
             err = '{n}: There was a problem sending email with file {f} from sender {s} to recipient {r}:\n{e}'.format(
                 n=ex.__class__.__name__, f=args.file, s=args.sender, r=args.recipient, e=str(ex))
@@ -213,7 +203,7 @@ def main():
     else:
         try:
             am.send_cons3rt_agent_logs()
-        except Exception:
+        except AssetMailerError:
             _, ex, trace = sys.exc_info()
             err = '{n}: There was a problem sending cons3rt agent log files:\n{e}'.format(
                 n=ex.__class__.__name__, e=str(ex))

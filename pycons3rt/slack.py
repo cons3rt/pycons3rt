@@ -18,6 +18,9 @@ python slack.py \
 import logging
 import json
 import argparse
+import os
+import sys
+
 import requests
 
 # Set up logger name for this module
@@ -28,6 +31,11 @@ except ImportError:
     mod_logger = 'slack'
 else:
     mod_logger = Logify.get_name() + '.slack'
+
+try:
+    import deployment
+except ImportError:
+    deployment = None
 
 __author__ = 'Joe Yennaco'
 
@@ -180,6 +188,59 @@ class SlackAttachment(object):
 
     def __str__(self):
         return self.fallback
+
+
+class Cons3rtSlackerError(Exception):
+    """Simple exception type for Cons3rtSlacker
+    """
+    pass
+
+
+class Cons3rtSlacker(SlackMessage):
+
+    def __init__(self, slack_url):
+        self.cls_logger = mod_logger + '.Cons3rtSlacker'
+        self.slack_url = slack_url
+        self.dep = deployment.Deployment()
+        self.slack_channel = self.dep.get_value('SLACK_CHANNEL')
+        self.deployment_run_name = self.dep.get_value('cons3rt.deploymentRun.name')
+        self.deployment_run_id = self.dep.get_value('cons3rt.deploymentRun.id')
+
+        # Build the Slack message text
+        self.slack_text = 'Run: ' \
+                     + self.deployment_run_name \
+                     + ' (ID: ' \
+                     + self.deployment_run_id + ')' \
+                     + '\nHost: *' \
+                     + self.dep.cons3rt_role_name + '*'
+
+        # Initialize the SlackMessage
+        try:
+            SlackMessage.__init__(self, webhook_url=self.slack_url, text=self.slack_text, channel=self.slack_channel)
+        except ValueError:
+            raise
+
+    def send_cons3rt_agent_logs(self):
+        """Sends a Slack message with an attachment for each cons3rt agent log
+
+        :return:
+        """
+        log = logging.getLogger(self.cls_logger + '.send_cons3rt_agent_logs')
+
+        log.debug('Searching for log files in directory: {d}'.format(d=self.dep.cons3rt_agent_log_dir))
+        for item in os.listdir(self.dep.cons3rt_agent_log_dir):
+            item_path = os.path.join(self.dep.cons3rt_agent_log_dir, item)
+            if os.path.isfile(item_path):
+                log.info('Adding slack attachment with cons3rt agent log file: {f}'.format(f=item_path))
+                try:
+                    with open(item_path, 'r') as f:
+                        file_text = f.read()
+                except (IOError, OSError) as e:
+                    log.warn('There was a problem opening file: {f}\n{e}'.format(f=item_path, e=e))
+                    continue
+                attachment = SlackAttachment(fallback=file_text, text=file_text, color='#9400D3')
+                self.add_attachment(attachment)
+        self.send()
 
 
 def main():

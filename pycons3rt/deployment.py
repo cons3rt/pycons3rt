@@ -22,6 +22,7 @@ import re
 import platform
 
 from logify import Logify
+from osutil import get_os
 from bash import get_ip_addresses
 from bash import CommandError
 
@@ -77,6 +78,18 @@ class Deployment(object):
             raise
         self.set_cons3rt_role_name()
         self.set_asset_dir()
+        if get_os() == 'Linux':
+            self.cons3rt_agent_home = os.path.join(os.path.sep, 'opt', 'cons3rt-agent')
+        elif get_os() == 'Windows':
+            self.cons3rt_agent_home = os.path.join('C:', os.path.sep, 'cons3rt-agent')
+        else:
+            self.cons3rt_agent_home = None
+        if self.cons3rt_agent_home:
+            self.cons3rt_agent_log_dir = os.path.join(self.cons3rt_agent_home, 'log')
+            self.cons3rt_agent_run_dir = os.path.join(self.cons3rt_agent_home, 'run')
+        else:
+            self.cons3rt_agent_log_dir = None
+            self.cons3rt_agent_run_dir = None
 
     def set_deployment_home(self):
         """Sets self.deployment_home
@@ -96,25 +109,18 @@ class Deployment(object):
             log.info('Found DEPLOYMENT_HOME environment variable set to: {d}'.format(d=self.deployment_home))
             return
 
-        log.info('Attempting to determine deployment home...')
-        if platform.system() == 'Linux':
-            cons3rt_run_dir = os.path.join(os.path.sep, 'opt', 'cons3rt-agent', 'run')
-            log.debug('This is Linux, using cons3rt agent run directory: {d}'.format(d=cons3rt_run_dir))
-        elif platform.system() == 'Windows':
-            cons3rt_run_dir = os.path.join('C:', os.path.sep, 'cons3rt-agent', 'run')
-            log.debug('This is Windows, using cons3rt agent run directory: {d}'.format(d=cons3rt_run_dir))
-        else:
+        if self.cons3rt_agent_run_dir is None:
             msg = 'This is not Windows nor Linux, cannot determine DEPLOYMENT_HOME'
             log.error(msg)
             raise DeploymentError(msg)
 
         # Ensure the run directory can be found
-        if not os.path.isdir(cons3rt_run_dir):
+        if not os.path.isdir(self.cons3rt_agent_run_dir):
             msg = 'Could not find the cons3rt run directory, DEPLOYMENT_HOME cannot be set'
             log.error(msg)
             raise DeploymentError(msg)
 
-        run_dir_contents = os.listdir(cons3rt_run_dir)
+        run_dir_contents = os.listdir(self.cons3rt_agent_run_dir)
         results = []
         for item in run_dir_contents:
             if 'Deployment' in item:
@@ -125,7 +131,7 @@ class Deployment(object):
             raise DeploymentError(msg)
 
         # Ensure the Deployment Home is a directory
-        candidate_deployment_home = os.path.join(cons3rt_run_dir, results[0])
+        candidate_deployment_home = os.path.join(self.cons3rt_agent_run_dir, results[0])
         if not os.path.isdir(candidate_deployment_home):
             msg = 'The candidate deployment home is not a valid directory: {d}'.format(d=candidate_deployment_home)
             log.error(msg)
