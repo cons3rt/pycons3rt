@@ -71,13 +71,8 @@ class Deployment(object):
         self.deployment_home = ''
         self.cons3rt_role_name = ''
         self.asset_dir = ''
-        try:
-            self.set_deployment_home()
-            self.read_deployment_properties()
-        except DeploymentError:
-            raise
-        self.set_cons3rt_role_name()
-        self.set_asset_dir()
+
+        # Determine cons3rt agent directories
         if get_os() == 'Linux':
             self.cons3rt_agent_home = os.path.join(os.path.sep, 'opt', 'cons3rt-agent')
         elif get_os() == 'Windows':
@@ -90,6 +85,15 @@ class Deployment(object):
         else:
             self.cons3rt_agent_log_dir = None
             self.cons3rt_agent_run_dir = None
+
+        # Set deployment home and read deployment properties
+        try:
+            self.set_deployment_home()
+            self.read_deployment_properties()
+        except DeploymentError:
+            raise
+        self.set_cons3rt_role_name()
+        self.set_asset_dir()
 
     def set_deployment_home(self):
         """Sets self.deployment_home
