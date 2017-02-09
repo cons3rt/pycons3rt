@@ -65,7 +65,7 @@ class AssetMailer(object):
         self.recipient_email = self.dep.get_value('cons3rt.user.email')
         if self.recipient_email is None:
             self.recipient_email = default_recipient_email
-        self.subject = 'pyCONS3RT Asset Mailer: Run {n}[{i}]'.format(n=self.run_name, i=self.run_id)
+        self.subject = 'pycons3rt Asset Mailer for Run {n}[{i}]: '.format(n=self.run_name, i=self.run_id)
 
     def __str__(self):
         return 'AssetMailer for Deployment Run ID: {i}'.format(i=self.run_id)
@@ -119,7 +119,7 @@ class AssetMailer(object):
 
         # Set the email subject
         file_name = text_file.split(os.path.sep)[-1]
-        subject = self.subject + 'File: '.format(f=file_name)
+        subject = self.subject + file_name
 
         # Read the input text file
         try:
@@ -137,9 +137,8 @@ class AssetMailer(object):
         mail_message['From'] = sender
         mail_message['To'] = recipient
 
-        # Set the SMTP server to be localhost
-        log.debug('Sending email with subject {s} to {e}...'.format(s=subject, e=recipient))
-
+        # Configure the SMTP server
+        log.debug('Configuring the SMTP server...')
         try:
             s = smtplib.SMTP(self.smtp_server)
         except (smtplib.SMTPConnectError, socket.timeout, socket.error):
@@ -148,8 +147,11 @@ class AssetMailer(object):
                 n=ex.__class__.__name__, s=self.smtp_server, e=str(ex))
             raise AssetMailerError, msg, trace
 
+        # Set the SMTP log level
+        #s.set_debuglevel(debuglevel=__debug__)
 
-        s.set_debuglevel(debuglevel=__debug__)
+        # Set the SMTP server to be localhost
+        log.debug('Sending email with subject {s} to {e}...'.format(s=subject, e=recipient))
         try:
             s.sendmail(sender, [recipient], mail_message.as_string())
         except smtplib.SMTPRecipientsRefused:
