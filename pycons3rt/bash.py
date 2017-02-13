@@ -1066,6 +1066,39 @@ def set_remote_host_environment_variable(host, variable_name, variable_value, en
         log.info('Environment variable {v} set to {n} on host {h}'.format(v=variable_name, n=variable_value, h=host))
 
 
+def run_remote_command(host, command, timeout_sec=5.0):
+    """Retrieves the value of an environment variable of a
+    remote host over SSH
+
+    :param host: (str) host to query
+    :param command: (str) command
+    :return: (str) command output
+    :raises: TypeError, CommandError
+    """
+    log = logging.getLogger(mod_logger + '.get_remote_host_environment_variable')
+    if not isinstance(host, basestring):
+        msg = 'host argument must be a string'
+        raise TypeError(msg)
+    if not isinstance(command, basestring):
+        msg = 'command argument must be a string'
+        raise TypeError(msg)
+    log.debug('Running remote command on host: {h}: {c}...'.format(h=host, v=command))
+    command = ['ssh', '{h}'.format(h=host), '{c}'.format(v=command)]
+    try:
+        result = run_command(command, timeout_sec=timeout_sec)
+        code = result['code']
+    except CommandError:
+        raise
+    if code != 0:
+        msg = 'There was a problem running command [{m}] host {h} over SSH, return code: {c}'.format(
+            h=host, c=code, m=command)
+        raise CommandError(msg)
+    else:
+        output = result['output'].strip()
+        log.debug('Running command [{m}] host {h} over SSH produced output: {o}'.format(m=command, h=host, o=output))
+    return output
+
+
 def check_remote_host_marker_file(host, file_path):
     """Queries a remote host over SSH to check for existence
     of a marker file
