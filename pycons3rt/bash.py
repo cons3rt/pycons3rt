@@ -1082,7 +1082,7 @@ def run_remote_command(host, command, timeout_sec=5.0):
     if not isinstance(command, basestring):
         msg = 'command argument must be a string'
         raise TypeError(msg)
-    log.debug('Running remote command on host: {h}: {c}...'.format(h=host, v=command))
+    log.debug('Running remote command on host: {h}: {c}...'.format(h=host, c=command))
     command = ['ssh', '{h}'.format(h=host), '{c}'.format(v=command)]
     try:
         result = run_command(command, timeout_sec=timeout_sec)
