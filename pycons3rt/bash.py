@@ -1075,7 +1075,7 @@ def run_remote_command(host, command, timeout_sec=5.0):
     :return: (str) command output
     :raises: TypeError, CommandError
     """
-    log = logging.getLogger(mod_logger + '.get_remote_host_environment_variable')
+    log = logging.getLogger(mod_logger + '.run_remote_command')
     if not isinstance(host, basestring):
         msg = 'host argument must be a string'
         raise TypeError(msg)
