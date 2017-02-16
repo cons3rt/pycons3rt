@@ -1083,7 +1083,7 @@ def run_remote_command(host, command, timeout_sec=5.0):
         msg = 'command argument must be a string'
         raise TypeError(msg)
     log.debug('Running remote command on host: {h}: {c}...'.format(h=host, c=command))
-    command = ['ssh', '{h}'.format(h=host), '{c}'.format(v=command)]
+    command = ['ssh', '{h}'.format(h=host), '{c}'.format(c=command)]
     try:
         result = run_command(command, timeout_sec=timeout_sec)
         code = result['code']
