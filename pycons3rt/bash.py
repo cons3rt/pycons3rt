@@ -1094,8 +1094,13 @@ def run_remote_command(host, command, timeout_sec=5.0):
             h=host, c=code, m=command)
         raise CommandError(msg)
     else:
-        output = result['output'].strip()
-        log.debug('Running command [{m}] host {h} over SSH produced output: {o}'.format(m=command, h=host, o=output))
+        output_text = result['output'].strip()
+        log.debug('Running command [{m}] host {h} over SSH produced output: {o}'.format(
+            m=command, h=host, o=output_text))
+        output = {
+            'output': output_text,
+            'code': code
+        }
     return output
 
 
