@@ -92,13 +92,15 @@ def query_nexus(query_url, timeout_sec):
     return nexus_response
 
 
-def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=600, **kwargs):
+def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=600, overwrite=True, **kwargs):
     """Retrieves an artifact from Nexus
 
     :param suppress_status: (bool) Set to True to suppress printing download status
     :param nexus_url: (str) URL of the Nexus Server
     :param timeout_sec: (int) Number of seconds to wait before
         timing out the artifact retrieval.
+    :param overwrite: (bool) True overwrites the file on the local system if it exists,
+        False does will log an INFO message and exist if the file already exists
     :param kwargs:
         group_id: (str) The artifact's Group ID in Nexus
         artifact_id: (str) The artifact's Artifact ID in Nexus
@@ -114,12 +116,17 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
 
     required_args = ['group_id', 'artifact_id', 'packaging', 'version', 'destination_dir']
 
-    if not isinstance(nexus_url, basestring):
-        msg = 'nexus_url arg must be a string'
+    if not isinstance(overwrite, bool):
+        msg = 'overwrite arg must be a string, found: {t}'.format(t=overwrite.__class__.__name__)
         log.error(msg)
         raise TypeError(msg)
-    else:
-        log.debug('Using Nexus Server URL: {u}'.format(u=nexus_url))
+
+    if not isinstance(nexus_url, basestring):
+        msg = 'nexus_url arg must be a string, found: {t}'.format(t=nexus_url.__class__.__name__)
+        log.error(msg)
+        raise TypeError(msg)
+
+    log.debug('Using Nexus Server URL: {u}'.format(u=nexus_url))
 
     # Ensure the required args are supplied, and that they are all strings
     for required_arg in required_args:
@@ -196,6 +203,7 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
     try_num = 1
     download_success = False
     dl_err = None
+    failed_attempt = False
 
     # Start the retry loop
     while try_num <= max_retries:
@@ -231,10 +239,16 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
         # Attempt to download the content from the response
         log.info('Attempting to download content of size {s} from Nexus to file: {d}'.format(s=file_size, d=download_file))
 
-        # Remove the existing file if it exists
-        if os.path.isfile(download_file):
+        # Remove the existing file if it exists, or exit if the file exists, overwrite is set,
+        # and there was not a previous failed attempted download
+        if os.path.isfile(download_file) and overwrite:
             log.debug('File already exists, removing: {d}'.format(d=download_file))
             os.remove(download_file)
+        elif os.path.isfile(download_file) and not overwrite and not failed_attempt:
+            log.info('File already downloaded, and overwrite is set to False.  The Artifact will '
+                     'not be retrieved from Nexus: {f}.  To overwrite the existing downloaded file, '
+                     'set overwrite=True'.format(f=download_file))
+            return
 
         # Attempt to download content
         log.debug('Attempt # {n} of {m} to download content from the Nexus response'.format(n=try_num, m=max_retries))
@@ -252,14 +266,16 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
                             print status,
         except(requests.exceptions.ConnectionError, requests.exceptions.RequestException, OSError):
             _, ex, trace = sys.exc_info()
-            dl_err = 'Caught {n} exception: There was an error reading content from the Nexus response. Downloaded ' \
+            dl_err = '{n}: There was an error reading content from the Nexus response. Downloaded ' \
                      'size: {s}.\n{e}'.format(n=ex.__class__.__name__, s=file_size_dl, t=retry_sec, e=str(ex))
+            failed_attempt = True
             log.warn(dl_err)
             if try_num < max_retries:
                 log.info('Retrying download in {t} sec...'.format(t=retry_sec))
                 time.sleep(retry_sec)
         else:
             log.info('File download of size {s} completed without error: {f}'.format(s=file_size_dl, f=download_file))
+            failed_attempt = False
             download_success = True
         try_num += 1
 
