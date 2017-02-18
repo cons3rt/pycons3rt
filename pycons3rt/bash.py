@@ -1072,6 +1072,7 @@ def run_remote_command(host, command, timeout_sec=5.0):
 
     :param host: (str) host to query
     :param command: (str) command
+    :param timeout_sec (float) seconds to wait before killing the command.
     :return: (str) command output
     :raises: TypeError, CommandError
     """
@@ -1090,8 +1091,8 @@ def run_remote_command(host, command, timeout_sec=5.0):
     except CommandError:
         raise
     if code != 0:
-        msg = 'There was a problem running command [{m}] host {h} over SSH, return code: {c}'.format(
-            h=host, c=code, m=command)
+        msg = 'There was a problem running command [{m}] on host {h} over SSH, return code: {c}'.format(
+            h=host, c=code, m=' '.join(command))
         raise CommandError(msg)
     else:
         output_text = result['output'].strip()
