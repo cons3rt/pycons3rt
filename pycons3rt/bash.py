@@ -1091,8 +1091,8 @@ def run_remote_command(host, command, timeout_sec=5.0):
     except CommandError:
         raise
     if code != 0:
-        msg = 'There was a problem running command [{m}] on host {h} over SSH, return code: {c}'.format(
-            h=host, c=code, m=' '.join(command))
+        msg = 'There was a problem running command [{m}] on host {h} over SSH, return code: {c}, and ' \
+              'produced output:\n{o}'.format(h=host, c=code, m=' '.join(command), o=result['output'])
         raise CommandError(msg)
     else:
         output_text = result['output'].strip()
