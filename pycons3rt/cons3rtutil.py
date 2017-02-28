@@ -103,6 +103,7 @@ class Cons3rtUtil(object):
             else:
                 msg = 'File not found: {f}'.format(f=self.secrets_file)
                 raise Cons3rtUtilError(msg)
+            self.admin_pass = self.admin_pass.strip()
             if self.admin_pass == '':
                 msg = 'Could not find a value for ADMIN_PASS'
                 log.error(msg)
