@@ -133,9 +133,10 @@ class ImageUtil(object):
             image_description = ami_info['Images'][0]['Description']
         except KeyError:
             _, ex, trace = sys.exc_info()
-            raise ImageUtilError('{n}: Unable to determine Image description for AMI ID {a}\n{e}'.format(
+            log.warn('{n}: Unable to determine Image description for AMI ID {a}\n{e}'.format(
                 n=ex.__class__.__name__, a=ami_id, e=str(ex)))
-        log.info('Found description of the current image: {d}'.format(d=image_description))
+            image_description = 'CONS3RT OS Template'
+        log.info('Using description of the current image: {d}'.format(d=image_description))
 
         # Deregister the image
         log.debug('De-registering image ID: {a}...'.format(a=ami_id))
