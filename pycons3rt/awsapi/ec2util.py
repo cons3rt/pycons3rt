@@ -10,6 +10,7 @@ configurations.
 import logging
 import sys
 import time
+import os
 
 # Pass ImportError on boto3 for offline assets
 try:
@@ -773,6 +774,69 @@ class EC2Util(object):
         else:
             log.info('Successfully added ingress rule for Security Group {g} on port: {p}'.format(
                     g=security_group_id, p=port))
+
+    def launch_instance(self, ami_id, key_name, subnet_id, security_group_id=None, user_data_script_path=None,
+                        instance_type='t2.small', root_device_name='/dev/xvda'):
+        """Launches an EC2 instance with the specified parameters, intended to launch 
+        an instance for creation of a CONS3RT template.
+        
+        :param ami_id: (str) ID of the AMI to launch from
+        :param key_name: (str) Name of the key-pair to use
+        :param subnet_id: (str) IF of the VPC subnet to attach the instance to
+        :param security_group_id: (str) ID of the security group, of not provided the default will be applied
+        :param user_data_script_path: (str) Path to the user-data script to run
+        :param instance_type: (str) Instance Type (e.g. t2.micro)
+        :param root_device_name: (str) The device name for the root volume
+        :return: 
+        """
+        log = logging.getLogger(self.cls_logger + '.launch_instance')
+        security_group_list = None
+        log.info('Launching with AMI ID: {a}'.format(a=ami_id))
+        log.info('Launching with Key Pair: {k}'.format(k=key_name))
+        if security_group_id is not None:
+            security_group_list = [security_group_id]
+            log.info('Launching with security group list: {s}'.format(s=security_group_list))
+        user_data = None
+        if user_data_script_path is not None:
+            if os.path.isfile(user_data_script_path):
+                with open(user_data_script_path, 'r') as f:
+                    user_data = f.read()
+        monitoring = {'Enabled': False}
+        block_device_mappings = [
+            {
+                'DeviceName': root_device_name,
+                'Ebs': {
+                    'VolumeSize': 100,
+                    'DeleteOnTermination': True
+                }
+            }
+        ]
+        log.info('Attempting to launch the EC2 instance now...')
+        try:
+            response = self.client.run_instances(
+                DryRun=False,
+                ImageId=ami_id,
+                MinCount=1,
+                MaxCount=1,
+                KeyName=key_name,
+                SecurityGroupIds=security_group_list,
+                UserData=user_data,
+                InstanceType=instance_type,
+                Monitoring=monitoring,
+                SubnetId=subnet_id,
+                InstanceInitiatedShutdownBehavior='stop',
+                BlockDeviceMappings=block_device_mappings
+            )
+        except ClientError:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: There was a problem launching the EC2 instance\n{e}'.format(n=ex.__class__.__name__, e=str(ex))
+            raise EC2UtilError, msg, trace
+        instance_id = response['Instances'][0]['InstanceId']
+        output = {
+            'InstanceId': instance_id,
+            'InstanceInfo': response['Instances'][0]
+        }
+        return output
 
 
 def get_ec2_client(region_name=None, aws_access_key_id=None, aws_secret_access_key=None):
