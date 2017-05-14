@@ -69,7 +69,7 @@ def install_jvmCerts(certPath=None, caStore=None, jhome=None):
         except CommandError:
             log.error('Failed to import cert {}.'.format(cert))
 
-def run_cmd(command, log, error=True, ret=False):
+def run_cmd(command, log, error=True, ret=False, timeout_sec=60.0):
     """Command wrapper for pycons3rt run_command.
     Pass command as string or list, and the logging function.
 
@@ -88,7 +88,7 @@ def run_cmd(command, log, error=True, ret=False):
         log.error('Command is not a list or string. Good job at being bad.')
 
     try:
-        result = run_command(command, timeout_sec=60.0)
+        result = run_command(command, timeout_sec)
         code = result['code']
         output = result['output']
     except CommandError:
