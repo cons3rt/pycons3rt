@@ -214,7 +214,7 @@ def get_region():
     """
     log = logging.getLogger(mod_logger + '.get_region')
 
-    # First get the availabilty zone
+    # First get the availability zone
     availability_zone = get_availability_zone()
 
     if availability_zone is None:
@@ -222,7 +222,7 @@ def get_region():
         log.error(msg)
         return
 
-    # Strip of the last character to get the refgion
+    # Strip of the last character to get the region
     region = availability_zone[:-1]
     return region
 

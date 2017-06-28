@@ -72,7 +72,7 @@ def get_pycons3rt_src_dir():
 
 
 def initialize_pycons3rt_dirs():
-    """Initializes the pycons3rt diretories
+    """Initializes the pycons3rt directories
 
     :return: None
     :raises: OSError

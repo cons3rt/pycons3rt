@@ -207,12 +207,8 @@ class Cons3rtSlacker(SlackMessage):
         self.deployment_run_id = self.dep.get_value('cons3rt.deploymentRun.id')
 
         # Build the Slack message text
-        self.slack_text = 'Run: ' \
-                     + self.deployment_run_name \
-                     + ' (ID: ' \
-                     + self.deployment_run_id + ')' \
-                     + '\nHost: *' \
-                     + self.dep.cons3rt_role_name + '*'
+        self.slack_text = 'Run: ' + self.deployment_run_name + ' (ID: ' + self.deployment_run_id + ')' + '\nHost: *' + \
+                          self.dep.cons3rt_role_name + '*'
 
         # Initialize the SlackMessage
         try:
@@ -268,7 +264,8 @@ class Cons3rtSlacker(SlackMessage):
                 file_text = f.read()
         except (IOError, OSError):
             _, ex, trace = sys.exc_info()
-            msg = '{n}: There was a problem opening file: {f}\n{e}'.format(f=text_file, e=str(ex))
+            msg = '{n}: There was a problem opening file: {f}\n{e}'.format(
+                n=ex.__class__.__name__, f=text_file, e=str(ex))
             raise Cons3rtSlackerError, msg, trace
 
         # Take the last 7000 characters

@@ -78,7 +78,7 @@ class EC2Util(object):
         log = logging.getLogger(self.cls_logger + '.get_vpc_id')
 
         # Exit if not running on AWS
-        if not self.is_aws():
+        if not self.is_aws:
             log.info('This machine is not running in AWS, exiting...')
             return
 
@@ -837,6 +837,36 @@ class EC2Util(object):
             'InstanceInfo': response['Instances'][0]
         }
         return output
+
+    def get_ec2_instances(self):
+        """Describes the EC2 instances
+
+        :return: dict containing EC2 instance data
+        """
+        log = logging.getLogger(self.cls_logger + '.get_ec2_instances')
+        log.info('Describing EC2 instances...')
+        try:
+            response = self.client.describe_instances()
+        except ClientError:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: There was a problem describing EC2 instances\n{e}'.format(n=ex.__class__.__name__, e=str(ex))
+            raise EC2UtilError, msg, trace
+        return response
+
+    def get_ebs_volumes(self):
+        """Describes the EBS volumes
+
+        :return: dict containing EBS volume data
+        """
+        log = logging.getLogger(self.cls_logger + '.get_ebs_volumes')
+        log.info('Describing EBS volumes...')
+        try:
+            response = self.client.describe_volumes()
+        except ClientError:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: There was a problem describing EBS volumes\n{e}'.format(n=ex.__class__.__name__, e=str(ex))
+            raise EC2UtilError, msg, trace
+        return response
 
 
 def get_ec2_client(region_name=None, aws_access_key_id=None, aws_secret_access_key=None):

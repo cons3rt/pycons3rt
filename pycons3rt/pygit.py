@@ -182,7 +182,7 @@ def encode_character(char):
     elif char == '^': return '%5E'
     elif char == '_': return '%5F'
     elif char == '`': return '%60'
-    elif char  == '{': return '%7B'
+    elif char == '{': return '%7B'
     elif char == '|': return '%7C'
     elif char == '}': return '%7D'
     elif char == '~': return '%7E'

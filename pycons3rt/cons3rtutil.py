@@ -84,7 +84,7 @@ class Cons3rtUtil(object):
                 msg = 'Unable to determine the CONS3RT admin user password, Otto secrets file not found\n{e}'.format(
                     e=str(ex))
                 log.error(msg)
-                raise  Cons3rtUtilError, msg, trace
+                raise Cons3rtUtilError, msg, trace
             log.info('Getting the admin CONS3RT user password...')
             self.admin_user = 'admin'
             self.admin_pass = ''
@@ -457,7 +457,7 @@ def decrypt_secrets_file():
     # build the decryption command
     command = [_secrets_util, 'decode', _secrets_file_dir]
     try:
-        result = run_command(command, timeout_sec=30)
+        run_command(command, timeout_sec=30)
     except CommandError:
         _, ex, trace = sys.exc_info()
         msg = 'Unable to decode the Encrypted Otto secrets file: {f}\n{e}'.format(f=_secrets_file_encrypted, e=str(ex))
@@ -468,7 +468,7 @@ def decrypt_secrets_file():
         msg = 'Decrypted Otto secrets file not found, it may not have decoded successfully: {f}'.format(f=_secrets_file)
         log.error(msg)
         raise OSError(msg)
-    log.info('Succesfully decoded Otto secrets file: {f}'.format(f=_secrets_file))
+    log.info('Successfully decoded Otto secrets file: {f}'.format(f=_secrets_file))
 
 
 def delete_secrets_file():
@@ -493,7 +493,7 @@ def delete_secrets_file():
         msg = 'Unable to clean the Decrypted Otto secrets file: {f}\n{e}'.format(f=_secrets_file_encrypted, e=str(ex))
         log.error(msg)
         raise OSError, msg, trace
-    log.info('Succesfully cleaned up Otto secrets file: {f}'.format(f=_secrets_file))
+    log.info('Successfully cleaned up Otto secrets file: {f}'.format(f=_secrets_file))
 
 
 def generate_cons3rt_password():

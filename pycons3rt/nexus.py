@@ -237,7 +237,8 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
         download_file = os.path.join(destination_dir, file_name)
 
         # Attempt to download the content from the response
-        log.info('Attempting to download content of size {s} from Nexus to file: {d}'.format(s=file_size, d=download_file))
+        log.info('Attempting to download content of size {s} from Nexus to file: {d}'.format(
+            s=file_size, d=download_file))
 
         # Remove the existing file if it exists, or exit if the file exists, overwrite is set,
         # and there was not a previous failed attempted download

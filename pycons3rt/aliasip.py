@@ -75,7 +75,7 @@ def ip_addr():
     :return: (dict) Containing device: ip_address
     """
     log = logging.getLogger(mod_logger + '.ip_addr')
-
+    log.debug('Running the ip addr command...')
     ip_addr_output = {}
 
     command = ['ip', 'addr']
@@ -263,7 +263,7 @@ def set_source_ip_for_interface(source_ip_address, desired_source_ip_address, de
     :return: None
     :raises: TypeError, ValueError, OSError
     """
-    log = logging.getLogger(mod_logger + '.alias_ip_address')
+    log = logging.getLogger(mod_logger + '.set_source_ip_for_interface')
     if not isinstance(device_num, int) and not isinstance(device_num, basestring):
         msg = 'arg device_num should be an int, or string representation of an int'
         log.error(msg)

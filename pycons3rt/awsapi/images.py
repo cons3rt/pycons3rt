@@ -63,6 +63,9 @@ class ImageUtil(object):
             self.ec2 = get_ec2_client()
         except AWSAPIError:
             raise
+        self.region_name = region_name
+        self.aws_access_key_id = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
 
     def update_image(self, ami_id, instance_id):
         """Replaces an existing AMI ID with an image created from the provided
@@ -103,7 +106,8 @@ class ImageUtil(object):
                     cons3rt_uuid = image_tag['Value']
         except KeyError:
             _, ex, trace = sys.exc_info()
-            msg = '{n}: Unable to find image tags for AMI ID: {a}\n{e}'.format(a=ami_id, n=ex.__class__.__name__)
+            msg = '{n}: Unable to find image tags for AMI ID: {a}\n{e}'.format(
+                a=ami_id, n=ex.__class__.__name__, e=str(ex))
             raise ImageUtilError, msg, trace
         if cons3rt_uuid is None:
             raise ImageUtilError('AMI tag cons3rtutil not found on image ID: {a}'.format(a=ami_id))
@@ -261,14 +265,39 @@ class ImageUtil(object):
         log.info('Successfully added tags to the new image ID: {w}\nTags: {t}'.format(
             w=new_ami_id, t=default_image_tags))
 
-    def copy_cons3rt_template(self, source_region, ami_id):
+    def copy_cons3rt_template(self, ami_id):
         """
         
-        :param source_region: 
-        :param ami_id: 
+        :param ami_id:
         :return: 
         """
         log = logging.getLogger(self.cls_logger + '.copy_cons3rt_template')
+
+        # Get the current AMI info
+        try:
+            ami_info = self.ec2.describe_images(DryRun=False, ImageIds=[ami_id], Owners=[self.owner_id])
+        except ClientError:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: Unable to describe image ID: {a}.\n{e}'.format(n=ex.__class__.__name__, a=ami_id, e=str(ex))
+            raise AWSAPIError, msg, trace
+        log.debug('Found AMI info: {a}'.format(a=ami_info))
+
+        # Grab the current cons3rtuuid tag data
+        cons3rt_uuid = None
+        try:
+            image_tags = ami_info['Images'][0]['Tags']
+            for image_tag in image_tags:
+                if image_tag['Key'] == 'cons3rtuuid':
+                    cons3rt_uuid = image_tag['Value']
+        except KeyError:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: Unable to find image tags for AMI ID: {a}\n{e}'.format(
+                a=ami_id, n=ex.__class__.__name__, e=str(ex))
+            raise ImageUtilError, msg, trace
+        if cons3rt_uuid is None:
+            raise ImageUtilError('AMI tag cons3rtutil not found on image ID: {a}'.format(a=ami_id))
+        log.info('Found image tag for cons3rtuuid: {u}'.format(u=cons3rt_uuid))
+        log.debug('Found image tags: {t}'.format(t=image_tags))
 
 
 def main():
