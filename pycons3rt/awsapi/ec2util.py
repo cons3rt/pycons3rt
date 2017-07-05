@@ -842,6 +842,7 @@ class EC2Util(object):
         """Describes the EC2 instances
 
         :return: dict containing EC2 instance data
+        :raises: EC2UtilError
         """
         log = logging.getLogger(self.cls_logger + '.get_ec2_instances')
         log.info('Describing EC2 instances...')
@@ -857,6 +858,7 @@ class EC2Util(object):
         """Describes the EBS volumes
 
         :return: dict containing EBS volume data
+        :raises EC2UtilError
         """
         log = logging.getLogger(self.cls_logger + '.get_ebs_volumes')
         log.info('Describing EBS volumes...')
@@ -865,6 +867,22 @@ class EC2Util(object):
         except ClientError:
             _, ex, trace = sys.exc_info()
             msg = '{n}: There was a problem describing EBS volumes\n{e}'.format(n=ex.__class__.__name__, e=str(ex))
+            raise EC2UtilError, msg, trace
+        return response
+
+    def get_vpcs(self):
+        """Describes the VPCs
+
+        :return: dict containing VPC data
+        :raises: EC2UtilError
+        """
+        log = logging.getLogger(self.cls_logger + '.get_vpcs')
+        log.info('Describing VPCs...')
+        try:
+            response = self.client.describe_vpcs()
+        except ClientError:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: There was a problem describing VPCs\n{e}'.format(n=ex.__class__.__name__, e=str(ex))
             raise EC2UtilError, msg, trace
         return response
 
