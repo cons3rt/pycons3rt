@@ -555,7 +555,7 @@ def zip_dir(dir_path, zip_file):
         raise CommandError(msg)
 
     try:
-        with contextlib.closing(zipfile.ZipFile(zip_file, 'w')) as zip_w:
+        with contextlib.closing(zipfile.ZipFile(zip_file, 'w', allowZip64=True)) as zip_w:
             for root, dirs, files in os.walk(dir_path):
                 for f in files:
                     log.debug('Adding file to zip: %s', f)
