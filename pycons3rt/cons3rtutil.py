@@ -113,6 +113,7 @@ class Cons3rtUtil(object):
             self.admin_pass = admin_password
         self.rca = os.path.join(self.cons3rt_base, 'cons3rt', 'scripts', 'run_cons3rt_admin.sh')
         self.rsa = os.path.join(self.cons3rt_base, 'cons3rt', 'scripts', 'run_security_admin.sh')
+        self.rya = os.path.join(self.cons3rt_base, 'cons3rt', 'scripts', 'run_yaml_main.sh')
 
     def run_cons3rt_command(self, command_string):
         """Runs a cons3rt CLI command string remotely on the cons3rt host
@@ -163,7 +164,19 @@ class Cons3rtUtil(object):
         log = logging.getLogger(self.cls_logger + '.run_cons3rt_admin_command')
         command_string = '{s} -user {u} -password {p} {a}'.format(
             s=self.rca, u=self.admin_user, p=self.admin_pass, a=command_args)
-        log.debug('Created run_security_admin command string: {d}'.format(d=command_string))
+        log.debug('Created run_cons3rt_admin command string: {d}'.format(d=command_string))
+        return self.run_cons3rt_command(command_string)
+
+    def run_yaml_main_command(self, command_args):
+        """Builds a command string for a run_yaml_main.sh command
+
+        :param command_args: (str) Args for the run_yaml_main.sh command not including credentials
+        :return: (dict) output of bash.run_command
+        """
+        log = logging.getLogger(self.cls_logger + '.run_yaml_main_command')
+        command_string = '{s} -user {u} -password {p} {a}'.format(
+            s=self.rya, u=self.admin_user, p=self.admin_pass, a=command_args)
+        log.debug('Created run_yaml_main command string: {d}'.format(d=command_string))
         return self.run_cons3rt_command(command_string)
 
     def get_cons3rt_users(self):
