@@ -13,6 +13,8 @@ import time
 import argparse
 
 import requests
+from requests.auth import HTTPBasicAuth
+from requests.packages.urllib3.poolmanager import PoolManager
 
 from bash import mkdir_p, CommandError
 
@@ -36,11 +38,12 @@ requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.SNIMissingWarning)
 
 
-def query_nexus(query_url, timeout_sec):
+def query_nexus(query_url, timeout_sec, basic_auth=None):
     """Queries Nexus for an artifact
 
     :param query_url: (str) Query URL
     :param timeout_sec: (int) query timeout
+    :param basic_auth (HTTPBasicAuth) object or none
     :return: requests.Response object
     :raises: RuntimeError
     """
@@ -57,7 +60,7 @@ def query_nexus(query_url, timeout_sec):
             break
         log.debug('Attempt # {n} of {m} to query the Nexus URL: {u}'.format(n=try_num, u=query_url, m=max_retries))
         try:
-            nexus_response = requests.get(query_url, stream=True, timeout=timeout_sec)
+            nexus_response = requests.get(query_url, auth=basic_auth, stream=True, timeout=timeout_sec)
         except requests.exceptions.Timeout:
             _, ex, trace = sys.exc_info()
             msg = 'Caught {n} exception: Nexus initial query timed out after {t} seconds:\n{e}'.format(
@@ -92,7 +95,8 @@ def query_nexus(query_url, timeout_sec):
     return nexus_response
 
 
-def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=600, overwrite=True, **kwargs):
+def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=600, overwrite=True,
+                 username=None, password=None, **kwargs):
     """Retrieves an artifact from Nexus
 
     :param suppress_status: (bool) Set to True to suppress printing download status
@@ -101,6 +105,8 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
         timing out the artifact retrieval.
     :param overwrite: (bool) True overwrites the file on the local system if it exists,
         False does will log an INFO message and exist if the file already exists
+    :param username: (str) username for basic auth
+    :param password: (str) password for basic auth
     :param kwargs:
         group_id: (str) The artifact's Group ID in Nexus
         artifact_id: (str) The artifact's Artifact ID in Nexus
@@ -194,6 +200,12 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
     if classifier is not None:
         params = params + '&c=' + classifier
 
+    # Determine the auth based on username and password
+    basic_auth = None
+    if (username is not None) and (password is not None):
+        log.info('Using the provided username/password for basic authentication...')
+        basic_auth = HTTPBasicAuth(username, password)
+
     # Build the query URL
     query_url = nexus_url + '?' + params
 
@@ -214,7 +226,7 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
 
         log.info('Attempting to query Nexus for the Artifact using URL:  {u}'.format(u=query_url))
         try:
-            nexus_response = query_nexus(query_url=query_url, timeout_sec=timeout_sec)
+            nexus_response = query_nexus(query_url=query_url, timeout_sec=timeout_sec, basic_auth=basic_auth)
         except RuntimeError:
             _, ex, trace = sys.exc_info()
             msg = 'Caught {n} exception: There was a problem querying Nexus URL: {u}\n{e}'.format(
@@ -304,6 +316,8 @@ def main():
     parser.add_argument('-p', '--packaging', help='Artifact Packaging', required=True)
     parser.add_argument('-r', '--repo', help='Nexus repository name', required=False)
     parser.add_argument('-d', '--destinationDir', help='Directory to download to', required=True)
+    parser.add_argument('-n', '--username', help='Directory to download to', required=True)
+    parser.add_argument('-w', '--password', help='Directory to download to', required=True)
     args = parser.parse_args()
     try:
         get_artifact(
@@ -314,7 +328,10 @@ def main():
             classifier=args.classifier,
             packaging=args.packaging,
             repo=args.repo,
-            destination_dir=args.destinationDir)
+            destination_dir=args.destinationDir,
+            username=args.username,
+            password=args.password
+        )
     except Exception as e:
         msg = 'Caught exception {n}, unable for download artifact from Nexus\n{s}'.format(
             n=e.__class__.__name__, s=e)

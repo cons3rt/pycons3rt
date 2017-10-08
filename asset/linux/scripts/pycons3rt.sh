@@ -2,6 +2,7 @@
 
 # Created by Joe Yennaco (8/29/2016)
 # Updated by J. Yennaco (2/1/2017) to include netifaces and jinja 2 as prerequisite packages
+# Updated by J. Yennaco (10/8/2017) to add the requests[security] package
 
 # Set log commands
 logTag="pycons3rt-install"
@@ -47,11 +48,11 @@ resultSet=();
 
 ####################### END GLOBAL VARIABLES #######################
 
-# Parameters:
-# 1 - Command to execute
-# Returns:
-# Exit code of the command that was executed
 function run_and_check_status() {
+    # Parameters:
+    # 1 - Command to execute
+    # Returns:
+    # Exit code of the command that was executed
     "$@"
     local status=$?
     if [ ${status} -ne 0 ]
@@ -64,13 +65,13 @@ function run_and_check_status() {
     return ${status}
 }
 
-# Tries to resolve a domain name for 5 minutes
-# Parameters:
-# 1 - Domain Name (e.g. example.com)
-# Returns:
-# 0 - Successfully resolved domain name
-# 1 - Failed to resolve domain name
 function verify_dns() {
+    # Tries to resolve a domain name for 5 minutes
+    # Parameters:
+    # 1 - Domain Name (e.g. example.com)
+    # Returns:
+    # 0 - Successfully resolved domain name
+    # 1 - Failed to resolve domain name
     local domainName=$1
     local count=0
     while [ ${count} -le 150 ] ; do
@@ -133,9 +134,8 @@ function install_prerequisites() {
 	run_and_check_status pip install boto3
 	run_and_check_status pip install netifaces
 	run_and_check_status pip install jinja2
-
-	# TODO requests prereq should move to the pyBART install asset
 	run_and_check_status pip install requests==2.10.0
+	run_and_check_status pip install requests[security]
 
     # Remove python-crypto from RHEL systems
 	#if [[ ${packageManagerCommand} == *yum* ]] ; then
@@ -211,7 +211,7 @@ function main() {
     fi
 
     # Determine the branch to clone based on deployment properties
-    pycons3rtBranch=${defaultBranch}
+    pycons3rtBranch="${defaultBranch}"
     if [ -z "${PYCONS3RT_BRANCH}" ] ; then
         ${logInfo} "PYCONS3RT_BRANCH deployment property not found, git will clone the ${pycons3rtBranch} branch"
     else

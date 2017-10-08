@@ -1,5 +1,6 @@
 # pycons3rt.ps1
 # Created by Joseph Yennaco (9/6/2016)
+# Updated by J. Yennaco (10/8/2017) to add the requests[security] package
 
 $ErrorActionPreference = "Stop"
 #$scriptPath = Split-Path -LiteralPath $(if ($PSVersionTable.PSVersion.Major -ge 3) { $PSCommandPath } else { & { $MyInvocation.ScriptName } })
@@ -95,7 +96,12 @@ try {
     }
 
     # Install PIP prerequisites
+    pip install awscli
     pip install boto3
+    pip install netifaces
+    pip install jinja2
+    pip install requests==2.10.0
+    pip install requests[security]
 
     # Run the pycons3rt setup
     logInfo "Installing pycons3rt..."
