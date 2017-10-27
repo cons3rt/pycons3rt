@@ -308,9 +308,21 @@ def source(script):
         log.error(msg)
         raise CommandError, msg, trace
     env = {}
+    log.debug('Adding environment variables from data: {d}'.format(d=data))
     for line in data.splitlines():
         entry = line.split("=", 1)
-        env[entry[0]] = entry[1]
+        if len(entry) != 2:
+            log.warn('This property is not in prop=value format, and will be skipped: {p}'.format(p=line))
+            continue
+        try:
+            env[entry[0]] = entry[1]
+        except IndexError:
+            _, ex, trace = sys.exc_info()
+            log.warn('IndexError: There was a problem setting environment variables from line: {p}\n{e}'.format(
+                p=line, e=str(ex)))
+            continue
+        else:
+            log.debug('Added environment variable {p}={v}'.format(p=entry[0], v=entry[1]))
     os.environ.update(env)
     return env
 
