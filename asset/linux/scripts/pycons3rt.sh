@@ -130,6 +130,7 @@ function install_prerequisites() {
 	run_and_check_status pip install setuptools --upgrade
 
 	# Install Python packages using PIP
+	run_and_check_status pip install wheel==0.29.0
 	run_and_check_status pip install awscli
 	run_and_check_status pip install boto3
 	run_and_check_status pip install netifaces
