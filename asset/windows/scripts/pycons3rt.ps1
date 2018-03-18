@@ -40,9 +40,9 @@ $defaultBranch = "master"
 
 # Set up logging functions
 function logger($level, $logstring) {
-   $stamp=get-date -f yyyyMMdd-HHmmss
-   $logmsg="$stamp - $LOGTAG - [$level] - $logstring"
-   add-content $Logfile -value $logmsg
+   $stamp = get-date -f yyyyMMdd-HHmmss
+   $logmsg = "$stamp - $LOGTAG - [$level] - $logstring"
+   write-output $logmsg
 }
 function logErr($logstring) { logger "ERROR" $logstring }
 function logWarn($logstring) { logger "WARNING" $logstring }
@@ -52,8 +52,8 @@ function logInfo($logstring) { logger "INFO" $logstring }
 
 ######################## SCRIPT EXECUTION ############################
 
-new-item $LOGFILE -itemType file -force
-
+new-item $logfile -itemType file -force
+start-transcript -append -path $logfile
 logInfo "Running $LOGTAG..."
 
 try {
@@ -148,4 +148,7 @@ finally {
 
 ###################### END SCRIPT EXECUTION ##########################
 
+logInfo "Exiting with code: $exitCode"
+stop-transcript
+get-content -Path $logfile
 exit $exitCode
