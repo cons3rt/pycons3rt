@@ -29,6 +29,7 @@ from . import dyndict
 from . import logify
 from . import nexus
 from . import slack
+from . import windows
 
 
 __title__ = 'pycons3rt'
@@ -40,4 +41,4 @@ __author__ = 'Joe Yennaco'
 __author_email__ = 'joe.yennaco@jackpinetech.com'
 __license__ = 'DoD Community Source Usage Agreement Version 1.1'
 __copyright__ = 'Copyright 2016 by Jackpine Technologies Corporation'
-__all__ = ['osutil', 'bash', 'aliasip', 'deployment', 'cons3rtutil', 'dyndict', 'logify', 'nexus', 'slack']
+__all__ = ['osutil', 'bash', 'aliasip', 'deployment', 'cons3rtutil', 'dyndict', 'logify', 'nexus', 'slack', 'windows']
