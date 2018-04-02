@@ -17,6 +17,7 @@ import zipfile
 import socket
 import contextlib
 import time
+import platform
 from threading import Timer
 
 from logify import Logify
@@ -666,17 +667,17 @@ def update_hosts_file(ip, entry):
     for line in fileinput.input(hosts_file, inplace=True):
         if re.search(ip, line):
             if line.split()[0] == ip:
-                log.info('Found IP {i} in line: {l}, updating...'.format(i=ip, l=line))
+                log.info('Found IP {i} in line: {li}, updating...'.format(i=ip, li=line))
                 log.info('Replacing with new line: {n}'.format(n=full_entry))
                 sys.stdout.write(full_entry)
                 updated = True
             else:
-                log.debug('Found ip {i} in line {l} but not an exact match, adding line back to hosts file {f}...'.
-                          format(i=ip, l=line, f=hosts_file))
+                log.debug('Found ip {i} in line {li} but not an exact match, adding line back to hosts file {f}...'.
+                          format(i=ip, li=line, f=hosts_file))
                 sys.stdout.write(line)
         else:
-            log.debug('IP address {i} not found in line, adding line back to hosts file {f}: {l}'.format(
-                    i=ip, l=line, f=hosts_file))
+            log.debug('IP address {i} not found in line, adding line back to hosts file {f}: {li}'.format(
+                    i=ip, li=line, f=hosts_file))
             sys.stdout.write(line)
 
     # Append the entry if the hosts file was not updated
@@ -1253,11 +1254,11 @@ def remove_default_gateway():
     log.info('Attempting to remove any default gateway configurations...')
     for line in fileinput.input(network_script, inplace=True):
         if re.search('^GATEWAY=.*', line):
-            log.info('Removing GATEWAY line: {l}'.format(l=line))
+            log.info('Removing GATEWAY line: {li}'.format(li=line))
         elif re.search('^GATEWAYDEV=.*', line):
-            log.info('Removing GATEWAYDEV line: {l}'.format(l=line))
+            log.info('Removing GATEWAYDEV line: {li}'.format(li=line))
         else:
-            log.debug('Keeping line: {l}'.format(l=line))
+            log.debug('Keeping line: {li}'.format(li=line))
             sys.stdout.write(line)
 
     # Restart networking for the changes to take effect
@@ -1270,6 +1271,100 @@ def remove_default_gateway():
             n=ex.__class__.__name__, e=str(ex)))
     else:
         log.info('Successfully restarted networking')
+
+
+def is_systemd():
+    """Determines whether this system uses systemd
+
+    :return: (bool) True if this distro has systemd
+    """
+    os_family = platform.system()
+    if os_family != 'Linux':
+        raise OSError('This method is only supported on Linux, found OS: {o}'.format(o=os_family))
+    linux_distro, linux_version, distro_name = platform.linux_distribution()
+
+    # Determine when to use systemd
+    systemd = False
+    if 'ubuntu' in linux_distro.lower() and '16' in linux_version:
+        systemd = True
+    elif 'red' in linux_distro.lower() and '7' in linux_version:
+        systemd = True
+    elif 'cent' in linux_distro.lower() and '7' in linux_version:
+        systemd = True
+    return systemd
+
+
+def manage_service(service_name, service_action='status', systemd=None):
+    """Use to run Linux sysv or systemd service commands
+
+    :param service_name (str) name of the service to start
+    :param service_action (str) action to perform on the service
+    :param systemd (bool) True if the command should use systemd
+    :return: (dict) exit code and result
+    :raises: OSError
+    """
+    log = logging.getLogger(mod_logger + '.start_service')
+
+    # Ensure the service name is a string
+    if not isinstance(service_name, basestring):
+        raise OSError('service_name arg must be a string, found: {t}'.format(t=service_name.__class__.__name__))
+
+    # Ensure the service name is a string
+    if not isinstance(service_action, basestring):
+        raise OSError('service_action arg must be a string, found: {t}'.format(t=service_name.__class__.__name__))
+
+    # Ensure the service action is valid
+    valid_actions = ['start', 'stop', 'reload', 'restart', 'status', 'enable', 'disable']
+    service_action = service_action.lower().strip()
+    if service_action not in valid_actions:
+        raise OSError('Invalid service action requested [{a}], valid actions are: [{v}]'.format(
+            a=service_action, v=','.join(valid_actions)
+        ))
+    log.info('Attempting to [{a}] service: {s}'.format(a=service_action, s=service_name))
+
+    # If systemd was not provided, attempt to determine which method to use
+    if not systemd:
+        log.debug('Systemd not provided, attempting to determine which method to use...')
+        systemd = is_systemd()
+
+    # Create commands depending on the method
+    command_list = []
+    if systemd:
+        if not service_name.endswith('.service'):
+            service_name = '{s}.service'
+        log.info('Attempting to manage service with systemd: {s}'.format(s=service_name))
+        command_list.append(['systemctl', service_action, service_name])
+    else:
+        log.info('Attempting to manage service with sysv: {s}'.format(s=service_name))
+
+        # Determine the commands to run
+        if service_action == 'enable':
+            command_list.append(['chkconfig', '--add ', service_name])
+            command_list.append(['chkconfig', service_name, 'on'])
+        elif service_action == 'disable':
+            command_list.append(['chkconfig', service_name, 'off'])
+        else:
+            command_list.append(['service', service_name, service_action])
+
+    # Run the commands in the command list
+    post_command_wait_time_sec = 3
+    for command in command_list:
+        log.info('Attempting to run command: [{c}]'.format(c=' '.join(command)))
+        try:
+            result = run_command(command, timeout_sec=30)
+        except CommandError:
+            _, ex, trace = sys.exc_info()
+            msg = 'There was a problem running a service management command\n{e}'.format(e=str(ex))
+            raise OSError, msg, trace
+        log.info('Command exited with code: {c}'.format(c=str(result['code'])))
+        if result['code'] != 0:
+            msg = 'Command exited with a non-zero code: [{c}], and produced output:\n{o}'.format(
+                c=str(result['code']), o=result['output'])
+            raise OSError(msg)
+        else:
+            log.info('Command returned successfully with output:\n{o}'.format(o=result['output']))
+        log.info('Waiting {t} sec...'.format(t=str(post_command_wait_time_sec)))
+        time.sleep(post_command_wait_time_sec)
 
 
 def main():
