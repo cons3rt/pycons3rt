@@ -104,7 +104,7 @@ def ip_addr():
                 else:
                     for part in parts:
                         part = part.strip()
-                        if part.strip().startswith('eth'):
+                        if part.strip().startswith('eth') or part.strip().startswith('eno'):
                             device = part
                             ip_addr_output[device] = ip_address
     return ip_addr_output
@@ -117,7 +117,8 @@ def alias_ip_address(ip_address, interface):
     Linux systems.
 
     :param ip_address: (str) IP address to set as an alias
-    :param interface: (str) The interface number to set
+    :param interface: (str) The interface number or full device name, if
+        an int is provided assumes the device name is eth<i>
     :return: None
     """
     log = logging.getLogger(mod_logger + '.alias_ip_address')
@@ -127,21 +128,28 @@ def alias_ip_address(ip_address, interface):
         msg = 'ip_address argument is not a string'
         log.error(msg)
         raise TypeError(msg)
-    try:
-        interface = int(interface)
-    except ValueError as e:
-        msg = 'interface argument is not an int\n{e}'.format(e=e)
-        log.error(msg)
-        raise ValueError(msg)
 
     # Validate the IP address
     if not validate_ip_address(ip_address):
-        msg = 'Not a valid IP address: {i}'.format(i=ip_address)
+        msg = 'The provided IP address arg is invalid: {i}'.format(i=ip_address)
         log.error(msg)
         raise ValueError(msg)
 
+    # Determine if the interface provided is a full device name
+    try:
+        int(interface)
+    except ValueError:
+        if isinstance(interface, basestring):
+            device_name = str(interface)
+            log.info('Full device name provided, will attempt to alias: {d}'.format(d=device_name))
+        else:
+            raise TypeError('Provided interface arg must be an int or str')
+    else:
+        device_name = 'eth{i}'.format(i=interface)
+        log.info('Integer provided as interface, using device name: {d}'.format(d=device_name))
+
     # Add alias
-    command = ['ifconfig', 'eth{nic}:0'.format(nic=interface), ip_address, 'up']
+    command = ['ifconfig', '{d}:0'.format(d=device_name), ip_address, 'up']
     try:
         result = run_command(command)
     except CommandError:
@@ -154,8 +162,8 @@ def alias_ip_address(ip_address, interface):
         raise OSError(msg)
 
     # Create interface file from the existing file
-    base_ifcfg = os.path.abspath(os.path.join(os.sep, 'etc', 'sysconfig', 'network-scripts', 'ifcfg-eth{i}'.format(
-            i=interface)))
+    base_ifcfg = os.path.abspath(os.path.join(os.sep, 'etc', 'sysconfig', 'network-scripts', 'ifcfg-{d}'.format(
+            d=device_name)))
     alias_ifcfg = base_ifcfg + ':0'
 
     # Ensure the base config file exists
@@ -196,8 +204,8 @@ def alias_ip_address(ip_address, interface):
     # Defined the ifcfg file entries for the alias
     ifcfg_entries['IPADDR'] = ip_address
     ifcfg_entries['NETMASK'] = '255.255.255.0'
-    ifcfg_entries['DEVICE'] = 'eth{i}:0'.format(i=interface)
-    ifcfg_entries['NAME'] = 'eth{i}:0'.format(i=interface)
+    ifcfg_entries['DEVICE'] = '{d}:0'.format(d=device_name)
+    ifcfg_entries['NAME'] = '{d}:0'.format(d=device_name)
 
     log.info('Creating file: {f}'.format(f=alias_ifcfg))
     try:
@@ -228,8 +236,8 @@ def alias_ip_address(ip_address, interface):
         raise OSError, msg, trace
     ifconfig = result['output']
 
-    if 'eth{i}:0'.format(i=interface) not in ifconfig:
-        msg = 'The alias was not created: eth{i}:0'.format(i=interface)
+    if '{d}:0'.format(d=device_name) not in ifconfig:
+        msg = 'The alias was not created: {d}:0'.format(d=device_name)
         log.error(msg)
         raise OSError(msg)
     else:
@@ -243,13 +251,13 @@ def alias_ip_address(ip_address, interface):
             ec2.add_secondary_ip(ip_address, interface)
         except EC2UtilError:
             _, ex, trace = sys.exc_info()
-            msg = 'Unable to instruct AWS to add a secondary IP address <{ip}> on interface <{i}>\n{e}'.format(
-                ip=ip_address, i=interface, e=str(ex))
+            msg = 'Unable to instruct AWS to add a secondary IP address <{ip}> on interface <{d}>\n{e}'.format(
+                ip=ip_address, d=device_name, e=str(ex))
             log.error(msg)
             raise OSError, msg, trace
         else:
-            log.info('AWS added the secondary IP address <{ip}> on interface <{i}>'.format(
-                ip=ip_address, i=interface))
+            log.info('AWS added the secondary IP address <{ip}> on interface <{d}>'.format(
+                ip=ip_address, d=device_name))
     else:
         log.info('This system is not on AWS, no additional configuration required')
 
@@ -264,10 +272,6 @@ def set_source_ip_for_interface(source_ip_address, desired_source_ip_address, de
     :raises: TypeError, ValueError, OSError
     """
     log = logging.getLogger(mod_logger + '.set_source_ip_for_interface')
-    if not isinstance(device_num, int) and not isinstance(device_num, basestring):
-        msg = 'arg device_num should be an int, or string representation of an int'
-        log.error(msg)
-        raise TypeError(msg)
     if not isinstance(source_ip_address, basestring):
         msg = 'arg source_ip_address must be a string'
         log.error(msg)
@@ -285,11 +289,24 @@ def set_source_ip_for_interface(source_ip_address, desired_source_ip_address, de
         log.error(msg)
         raise ValueError(msg)
 
+    # Determine the device name based on the device_num
+    log.debug('Attempting to determine the device name based on the device_num arg...')
+    try:
+        int(device_num)
+    except ValueError:
+        if isinstance(device_num, basestring):
+            device_name = device_num
+            log.info('Provided device_num is not an int, assuming it is the full device name: {d}'.format(d=device_name))
+        else:
+            raise TypeError('device_num arg must be a string or int')
+    else:
+        device_name = 'eth{n}'.format(n=str(device_num))
+        log.info('Provided device_num is an int, assuming device name is: {d}'.format(d=device_name))
+
     # Build the command
     # iptables -t nat -I POSTROUTING -o eth0 -s ${RA_ORIGINAL_IP} -j SNAT --to-source
-    device_num_str = str(device_num)
 
-    command = ['iptables', '-t', 'nat', '-I', 'POSTROUTING', '-o', 'eth{d}'.format(d=device_num_str), '-s',
+    command = ['iptables', '-t', 'nat', '-I', 'POSTROUTING', '-o', device_name, '-s',
                source_ip_address, '-j', 'SNAT', '--to-source', desired_source_ip_address]
     log.info('Running command: {c}'.format(c=command))
     try:
@@ -305,8 +322,8 @@ def set_source_ip_for_interface(source_ip_address, desired_source_ip_address, de
             c=result['code'], o=result['output'])
         log.error(msg)
         raise OSError(msg)
-    log.info('Successfully configured the source IP for eth{d} to be: {i}'.format(
-        d=device_num_str, i=desired_source_ip_address))
+    log.info('Successfully configured the source IP for {d} to be: {i}'.format(
+        d=device_name, i=desired_source_ip_address))
 
 
 def main():
