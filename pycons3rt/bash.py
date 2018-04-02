@@ -163,7 +163,7 @@ def get_ip_addresses():
     device = None
     for part in parts:
         if device is None:
-            if 'eth' in part:
+            if 'eth' in part or 'eno' in part:
                 device = part
         else:
             test = part.split(':', 1)
