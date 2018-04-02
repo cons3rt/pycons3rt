@@ -106,7 +106,7 @@ class EC2Util(object):
         log.info('Found VPC ID: {v}'.format(v=vpc_id))
         return vpc_id
 
-    def get_eni_id(self, interface=0):
+    def get_eni_id(self, interface=1):
         """Given an interface number, gets the AWS elastic network
         interface associated with the interface.
 
@@ -155,7 +155,7 @@ class EC2Util(object):
         log.info('Found ENI ID: {e}'.format(e=eni_id))
         return eni_id
 
-    def add_secondary_ip(self, ip_address, interface=0):
+    def add_secondary_ip(self, ip_address, interface=1):
         """Adds an IP address as a secondary IP address
 
         :param ip_address: String IP address to add as a secondary IP
@@ -195,7 +195,7 @@ class EC2Util(object):
         log.info('Successfully added secondary IP address {s} to ENI ID {e} on interface {i}'.format(
                 s=ip_address, e=eni_id, i=interface))
 
-    def associate_elastic_ip(self, allocation_id, interface=0, private_ip=None):
+    def associate_elastic_ip(self, allocation_id, interface=1, private_ip=None):
         """Given an elastic IP address and an interface number, associates the
         elastic IP to the interface number on this host.
 
