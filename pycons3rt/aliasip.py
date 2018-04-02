@@ -110,7 +110,7 @@ def ip_addr():
     return ip_addr_output
 
 
-def alias_ip_address(ip_address, interface):
+def alias_ip_address(ip_address, interface, aws=False):
     """Adds an IP alias to a specific interface
 
     Adds an ip address as an alias to the specified interface on
@@ -119,6 +119,7 @@ def alias_ip_address(ip_address, interface):
     :param ip_address: (str) IP address to set as an alias
     :param interface: (str) The interface number or full device name, if
         an int is provided assumes the device name is eth<i>
+    :param aws (bool) True to perform additional AWS config
     :return: None
     """
     log = logging.getLogger(mod_logger + '.alias_ip_address')
@@ -243,23 +244,24 @@ def alias_ip_address(ip_address, interface):
     else:
         log.info('Alias created successfully!')
 
-    log.info('Performing additional configuration for AWS...')
-    if is_aws():
+    if aws:
         log.info('Performing additional configuration for AWS...')
-        try:
-            ec2 = EC2Util()
-            ec2.add_secondary_ip(ip_address, interface)
-        except EC2UtilError:
-            _, ex, trace = sys.exc_info()
-            msg = 'Unable to instruct AWS to add a secondary IP address <{ip}> on interface <{d}>\n{e}'.format(
-                ip=ip_address, d=device_name, e=str(ex))
-            log.error(msg)
-            raise OSError, msg, trace
+        if is_aws():
+            log.info('Performing additional configuration for AWS...')
+            try:
+                ec2 = EC2Util()
+                ec2.add_secondary_ip(ip_address, interface)
+            except EC2UtilError:
+                _, ex, trace = sys.exc_info()
+                msg = 'Unable to instruct AWS to add a secondary IP address <{ip}> on interface <{d}>\n{e}'.format(
+                    ip=ip_address, d=device_name, e=str(ex))
+                log.error(msg)
+                raise OSError, msg, trace
+            else:
+                log.info('AWS added the secondary IP address <{ip}> on interface <{d}>'.format(
+                    ip=ip_address, d=device_name))
         else:
-            log.info('AWS added the secondary IP address <{ip}> on interface <{d}>'.format(
-                ip=ip_address, d=device_name))
-    else:
-        log.info('This system is not on AWS, no additional configuration required')
+            log.info('This system is not on AWS, no additional configuration required')
 
 
 def set_source_ip_for_interface(source_ip_address, desired_source_ip_address, device_num=0):
