@@ -71,6 +71,14 @@ class Deployment(object):
         self.deployment_home = ''
         self.cons3rt_role_name = ''
         self.asset_dir = ''
+        self.scenario_role_names = []
+        self.scenario_master = ''
+        self.scenario_network_info = []
+        self.deployment_id = None
+        self.deployment_name = ''
+        self.deployment_run_id = None
+        self.deployment_run_name = ''
+        self.virtualization_realm_type = ''
 
         # Determine cons3rt agent directories
         if get_os() == 'Linux':
@@ -94,6 +102,13 @@ class Deployment(object):
             raise
         self.set_cons3rt_role_name()
         self.set_asset_dir()
+        self.set_scenario_role_names()
+        self.set_scenario_network_info()
+        self.set_deployment_name()
+        self.set_deployment_id()
+        self.set_deployment_run_name()
+        self.set_deployment_run_id()
+        self.set_virtualization_realm_type()
 
     def set_deployment_home(self):
         """Sets self.deployment_home
@@ -211,30 +226,50 @@ class Deployment(object):
         :return: (str) Property name matching the passed regex or None.
         """
         log = logging.getLogger(self.cls_logger + '.get_property')
-        log.info('Looking up property based on regex: %s', regex)
+
         if not isinstance(regex, basestring):
-            log.error('regex arg is not a string')
+            log.error('regex arg is not a string found type: {t}'.format(t=regex.__class__.__name__))
             return None
-        prop_list = self.properties.keys()
+
+        log.debug('Looking up property based on regex: {r}'.format(r=regex))
         prop_list_matched = []
-        for prop_name in prop_list:
+        for prop_name in self.properties.keys():
             match = re.search(regex, prop_name)
             if match:
                 prop_list_matched.append(prop_name)
         if len(prop_list_matched) == 1:
-            log.info('Found property: %s', prop_list_matched[0])
+            log.debug('Found matching property: {p}'.format(p=prop_list_matched[0]))
             return prop_list_matched[0]
         elif len(prop_list_matched) > 1:
-            log.info('Passed regex {r} matched more than 1 property, checking for an exact match...'.format(r=regex))
+            log.debug('Passed regex {r} matched more than 1 property, checking for an exact match...'.format(r=regex))
             for matched_prop in prop_list_matched:
                 if matched_prop == regex:
-                    log.info('Found an exact match: {p}'.format(p=matched_prop))
+                    log.debug('Found an exact match: {p}'.format(p=matched_prop))
                     return matched_prop
-            log.info('Exact match not found for regex {r}, returning None'.format(r=regex))
+            log.debug('Exact match not found for regex {r}, returning None'.format(r=regex))
             return None
         else:
-            log.info('Passed regex did not match any property: %s', regex)
+            log.debug('Passed regex did not match any deployment properties: {r}'.format(r=regex))
             return None
+
+    def get_matching_property_names(self, regex):
+        """Returns a list of property names matching the provided
+        regular expression
+
+        :param regex: Regular expression to search on
+        :return: (list) of property names matching the regex
+        """
+        log = logging.getLogger(self.cls_logger + '.get_matching_property_names')
+        prop_list_matched = []
+        if not isinstance(regex, basestring):
+            log.warn('regex arg is not a string, found type: {t}'.format(t=regex.__class__.__name__))
+            return prop_list_matched
+        log.debug('Finding properties matching regex: {r}'.format(r=regex))
+        for prop_name in self.properties.keys():
+            match = re.search(regex, prop_name)
+            if match:
+                prop_list_matched.append(prop_name)
+        return prop_list_matched
 
     def get_value(self, property_name):
         """Returns the value associated to the passed property
@@ -248,15 +283,16 @@ class Deployment(object):
         """
         log = logging.getLogger(self.cls_logger + '.get_value')
         if not isinstance(property_name, basestring):
-            log.error('_prop arg is not a string')
+            log.error('property_name arg is not a string, found type: {t}'.format(t=property_name.__class__.__name__))
             return None
+        # Ensure a property with that name exists
         prop = self.get_property(property_name)
-        if prop:
-            log.info('Found value: %s', self.properties[prop])
-            return self.properties[prop]
-        else:
-            log.info('Did not find a value for property: {p}'.format(p=property_name))
+        if not prop:
+            log.debug('Property name not found matching: {n}'.format(n=property_name))
             return None
+        value = self.properties[prop]
+        log.debug('Found value for property {n}: {v}'.format(n=property_name, v=value))
+        return value
 
     def set_cons3rt_role_name(self):
         """Set the cons3rt_role_name member for this system
@@ -376,6 +412,148 @@ class Deployment(object):
             log.warn('Environment variable ASSET_DIR is not set!')
         else:
             log.info('Found environment variable ASSET_DIR: {a}'.format(a=self.asset_dir))
+
+    def set_scenario_role_names(self):
+        """Populates the list of scenario role names in this deployment and
+        populates the scenario_master with the master role
+
+        Gets a list of deployment properties containing "isMaster" because
+        there is exactly one per scenario host, containing the role name
+
+        :return:
+        """
+        log = logging.getLogger(self.cls_logger + '.get_scenario_role_names')
+        is_master_props = self.get_matching_property_names('isMaster')
+        for is_master_prop in is_master_props:
+            role_name = is_master_prop.split('.')[-1]
+            log.info('Adding scenario host: {n}'.format(n=role_name))
+            self.scenario_role_names.append(role_name)
+
+            # Determine if this is the scenario master
+            is_master = self.get_value(is_master_prop).lower().strip()
+            if is_master == 'true':
+                log.info('Found master scenario host: {r}'.format(r=role_name))
+                self.scenario_master = role_name
+
+    def set_scenario_network_info(self):
+        """Populates a list of network info for each scenario host from
+        deployment properties
+
+        :return: None
+        """
+        log = logging.getLogger(self.cls_logger + '.get_network_info')
+
+        for scenario_host in self.scenario_role_names:
+            scenario_host_network_info = {'scenario_role_name': scenario_host}
+            log.debug('Looking up network info from deployment properties for scenario host: {s}'.format(
+                s=scenario_host))
+            network_name_props = self.get_matching_property_names('.*{r}.*networkName'.format(r=scenario_host))
+
+            network_info_list = []
+            for network_name_prop in network_name_props:
+                network_info = {}
+                network_name = self.get_value(network_name_prop)
+                if not network_name:
+                    log.debug('Network name not found for prop: {n}'.format(n=network_name_prop))
+                    continue
+                log.debug('Adding info for network name: {n}'.format(n=network_name))
+                network_info['network_name'] = network_name
+                interface_name_prop = 'cons3rt.fap.deployment.machine.{r}.{n}.interfaceName'.format(
+                    r=scenario_host, n=network_name)
+                interface_name = self.get_value(interface_name_prop)
+                if interface_name:
+                    network_info['interface_name'] = interface_name
+                external_ip_prop = 'cons3rt.fap.deployment.machine.{r}.{n}.externalIp'.format(
+                    r=scenario_host, n=network_name)
+                external_ip = self.get_value(external_ip_prop)
+                if external_ip:
+                    network_info['external_ip'] = external_ip
+                internal_ip_prop = 'cons3rt.fap.deployment.machine.{r}.{n}.internalIp'.format(
+                    r=scenario_host, n=network_name)
+                internal_ip = self.get_value(internal_ip_prop)
+                if internal_ip:
+                    network_info['internal_ip'] = internal_ip
+                is_cons3rt_connection_prop = 'cons3rt.fap.deployment.machine.{r}.{n}.isCons3rtConnection'.format(
+                    r=scenario_host, n=network_name)
+                is_cons3rt_connection = self.get_value(is_cons3rt_connection_prop)
+                if is_cons3rt_connection:
+                    if is_cons3rt_connection.lower().strip() == 'true':
+                        network_info['is_cons3rt_connection'] = True
+                    else:
+                        network_info['is_cons3rt_connection'] = False
+                mac_address_prop = 'cons3rt.fap.deployment.machine.{r}.{n}.mac'.format(r=scenario_host, n=network_name)
+                mac_address = self.get_value(mac_address_prop)
+                if mac_address:
+                    # Trim the escape characters from the mac address
+                    mac_address = mac_address.replace('\\', '')
+                    network_info['mac_address'] = mac_address
+                log.debug('Found network info: {n}'.format(n=str(network_info)))
+                network_info_list.append(network_info)
+            scenario_host_network_info['network_info'] = network_info_list
+            self.scenario_network_info.append(scenario_host_network_info)
+
+    def set_deployment_name(self):
+        """Sets the deployment name from deployment properties
+
+        :return: None
+        """
+        log = logging.getLogger(self.cls_logger + '.set_deployment_name')
+        self.deployment_name = self.get_value('cons3rt.deployment.name')
+        log.info('Found deployment name: {n}'.format(n=self.deployment_name))
+
+    def set_deployment_id(self):
+        """Sets the deployment ID from deployment properties
+
+        :return: None
+        """
+        log = logging.getLogger(self.cls_logger + '.set_deployment_id')
+        deployment_id_val = self.get_value('cons3rt.deployment.id')
+        if not deployment_id_val:
+            log.debug('Deployment ID not found in deployment properties')
+            return
+        try:
+            deployment_id = int(deployment_id_val)
+        except ValueError:
+            log.debug('Deployment ID found was unable to convert to an int: {d}'.format(d=deployment_id_val))
+            return
+        self.deployment_id = deployment_id
+        log.info('Found deployment ID: {i}'.format(i=str(self.deployment_id)))
+
+    def set_deployment_run_name(self):
+        """Sets the deployment run name from deployment properties
+
+        :return: None
+        """
+        log = logging.getLogger(self.cls_logger + '.set_deployment_run_name')
+        self.deployment_run_name = self.get_value('cons3rt.deploymentRun.name')
+        log.info('Found deployment run name: {n}'.format(n=self.deployment_run_name))
+
+    def set_deployment_run_id(self):
+        """Sets the deployment run ID from deployment properties
+
+        :return: None
+        """
+        log = logging.getLogger(self.cls_logger + '.set_deployment_run_id')
+        deployment_run_id_val = self.get_value('cons3rt.deploymentRun.id')
+        if not deployment_run_id_val:
+            log.debug('Deployment run ID not found in deployment properties')
+            return
+        try:
+            deployment_run_id = int(deployment_run_id_val)
+        except ValueError:
+            log.debug('Deployment run ID found was unable to convert to an int: {d}'.format(d=deployment_run_id))
+            return
+        self.deployment_run_id = deployment_run_id
+        log.info('Found deployment run ID: {i}'.format(i=str(self.deployment_run_id)))
+
+    def set_virtualization_realm_type(self):
+        """Sets the virtualization realm type from deployment properties
+
+        :return: None
+        """
+        log = logging.getLogger(self.cls_logger + '.set_virtualization_realm_type')
+        self.virtualization_realm_type = self.get_value('cons3rt.deploymentRun.virtRealm.type')
+        log.info('Found virtualization realm type : {t}'.format(t=self.virtualization_realm_type))
 
 
 def main():
