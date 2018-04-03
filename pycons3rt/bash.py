@@ -717,9 +717,15 @@ def set_hostname(new_hostname):
         log.error(msg)
         raise CommandError, msg, trace
 
+    # Use hostname or hostnamectl command depending on the distro
+    if is_systemd():
+        command = ['/bin/hostnamectl', 'set-hostname', new_hostname]
+    else:
+        command = ['/bin/hostname', new_hostname]
+    log.info('Using command: {c}'.format(c=' '.join(command)))
+
     # Run the hostname command
     log.info('Running hostname command to set the hostname...')
-    command = ['/bin/hostname', new_hostname]
     try:
         result = run_command(command)
     except CommandError:
