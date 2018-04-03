@@ -1306,7 +1306,7 @@ def manage_service(service_name, service_action='status', systemd=None):
     :param service_name (str) name of the service to start
     :param service_action (str) action to perform on the service
     :param systemd (bool) True if the command should use systemd
-    :return: (dict) exit code and result
+    :return: None
     :raises: OSError
     """
     log = logging.getLogger(mod_logger + '.start_service')
