@@ -722,16 +722,15 @@ def set_hostname(new_hostname):
         command = ['/bin/hostnamectl', 'set-hostname', new_hostname]
     else:
         command = ['/bin/hostname', new_hostname]
-    log.info('Using command: {c}'.format(c=' '.join(command)))
 
     # Run the hostname command
-    log.info('Running hostname command to set the hostname...')
+    log.info('Running hostname command to set the hostname: [{c}]'.format(c=' '.join(command)))
     try:
         result = run_command(command)
     except CommandError:
         raise
-    log.info('Hostname command completed with code: {c}'.format(
-        c=result['code']))
+    log.info('Hostname command completed with code: {c} and output:\n{o}'.format(
+        c=result['code'], o=result['output']))
     return result['code']
 
 
