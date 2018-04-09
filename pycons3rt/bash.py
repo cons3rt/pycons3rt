@@ -1308,7 +1308,7 @@ def manage_service(service_name, service_action='status', systemd=None):
     :return: None
     :raises: OSError
     """
-    log = logging.getLogger(mod_logger + '.start_service')
+    log = logging.getLogger(mod_logger + '.manage_service')
 
     # Ensure the service name is a string
     if not isinstance(service_name, basestring):
@@ -1336,20 +1336,20 @@ def manage_service(service_name, service_action='status', systemd=None):
     command_list = []
     if systemd:
         if not service_name.endswith('.service'):
-            service_name = '{s}.service'
+            service_name = '{s}.service'.format(s=service_name)
         log.info('Attempting to manage service with systemd: {s}'.format(s=service_name))
-        command_list.append(['systemctl', service_action, service_name])
+        command_list.append(['/usr/bin/systemctl', service_action, service_name])
     else:
         log.info('Attempting to manage service with sysv: {s}'.format(s=service_name))
 
         # Determine the commands to run
         if service_action == 'enable':
-            command_list.append(['chkconfig', '--add ', service_name])
-            command_list.append(['chkconfig', service_name, 'on'])
+            command_list.append(['/sbin/chkconfig', '--add ', service_name])
+            command_list.append(['/sbin/chkconfig', service_name, 'on'])
         elif service_action == 'disable':
-            command_list.append(['chkconfig', service_name, 'off'])
+            command_list.append(['/sbin/chkconfig', service_name, 'off'])
         else:
-            command_list.append(['service', service_name, service_action])
+            command_list.append(['/sbin/service', service_name, service_action])
 
     # Run the commands in the command list
     post_command_wait_time_sec = 3
