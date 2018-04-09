@@ -721,7 +721,7 @@ def set_hostname(new_hostname):
     if is_systemd():
         #runuser -l -s /bin/bash -c "/bin/hostnamectl set-hostname cons3rt.int.cons3rt.io"
         command = ['runuser', '-l', '-s', '/bin/bash', '-c',
-                   '"/bin/hostnamectl set-hostname {h}"'.format(c=new_hostname), 'root']
+                   '"/bin/hostnamectl set-hostname {h}"'.format(h=new_hostname), 'root']
     else:
         command = ['/bin/hostname', new_hostname]
 
