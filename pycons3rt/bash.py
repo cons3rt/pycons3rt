@@ -687,14 +687,16 @@ def update_hosts_file(ip, entry):
             f.write(full_entry)
 
 
-def set_hostname(new_hostname):
+def set_hostname(new_hostname, pretty_hostname=None):
     """Sets this hosts hostname
 
     This method updates /etc/sysconfig/network and calls the hostname
     command to set a hostname on a Linux system.
 
     :param new_hostname: (str) New hostname
-    :return int exit code of the hostname command
+    :param pretty_hostname: (str) new pretty hostname, set to the same as
+        new_hostname if not provided
+    :return (int) exit code of the hostname command
     :raises CommandError
     """
     log = logging.getLogger(mod_logger + '.set_hostname')
@@ -702,36 +704,58 @@ def set_hostname(new_hostname):
     # Ensure the hostname is a str
     if not isinstance(new_hostname, basestring):
         msg = 'new_hostname argument must be a string'
-        log.error(msg)
         raise CommandError(msg)
 
     # Update the network config file
     network_file = '/etc/sysconfig/network'
-    log.info('Updating %s with the new hostname: %s...', network_file,
-             new_hostname)
-    try:
-        sed(network_file, '^HOSTNAME=.*', 'HOSTNAME=' + new_hostname)
-    except CommandError:
-        _, ex, trace = sys.exc_info()
-        msg = 'Unable to update {f}\n{e}'.format(f=network_file, e=str(ex))
-        log.error(msg)
-        raise CommandError, msg, trace
+    if os.path.isfile(network_file):
+        log.info('Updating {f} with the new hostname: {h}...'.format(f=network_file, h=new_hostname))
+        try:
+            sed(network_file, '^HOSTNAME=.*', 'HOSTNAME=' + new_hostname)
+        except CommandError:
+            _, ex, trace = sys.exc_info()
+            msg = 'Unable to update [{f}], produced output:\n{e}'.format(f=network_file, e=str(ex))
+            raise CommandError, msg, trace
+    else:
+        log.info('Network file not found, will not be updated: {f}'.format(f=network_file))
 
-    # Use hostname or hostnamectl command depending on the distro
+    # Update the hostname
     if is_systemd():
-        command = ['/bin/hostnamectl', '--no-ask-password', '-H', 'localhost', 'set-hostname', new_hostname]
+        hostname_file = '/etc/hostname'
+        pretty_hostname_file = '/etc/machine-info'
+        log.info('This is systemd, updating files: {h} and {p}'.format(h=hostname_file, p=pretty_hostname_file))
+
+        # Update the hostname file
+        log.info('Updating hostname file: {h}...'.format(h=hostname_file))
+        if os.path.isfile(hostname_file):
+            os.remove(hostname_file)
+        with open(hostname_file, 'w') as f:
+            f.write(new_hostname)
+        log.info('Updating pretty hostname file: {p}'.format(p=pretty_hostname_file))
+
+        # Use the same thing if pretty hostname is not provided
+        if pretty_hostname is None:
+            log.info('Pretty hostname not provided, using: {p}'.format(p=pretty_hostname))
+            pretty_hostname = new_hostname
+
+        # Update the pretty hostname file
+        if os.path.isfile(pretty_hostname_file):
+            os.remove(pretty_hostname_file)
+        with open(pretty_hostname_file, 'w') as f:
+            f.write('PRETTY_HOSTNAME={p}'.format(p=pretty_hostname))
+        return 0
     else:
         command = ['/bin/hostname', new_hostname]
 
-    # Run the hostname command
-    log.info('Running hostname command to set the hostname: [{c}]'.format(c=' '.join(command)))
-    try:
-        result = run_command(command)
-    except CommandError:
-        raise
-    log.info('Hostname command completed with code: {c} and output:\n{o}'.format(
-        c=result['code'], o=result['output']))
-    return result['code']
+        # Run the hostname command
+        log.info('Running hostname command to set the hostname: [{c}]'.format(c=' '.join(command)))
+        try:
+            result = run_command(command)
+        except CommandError:
+            raise
+        log.info('Hostname command completed with code: {c} and output:\n{o}'.format(
+            c=result['code'], o=result['output']))
+        return result['code']
 
 
 def set_ntp_server(server):
