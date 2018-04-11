@@ -1396,6 +1396,37 @@ def manage_service(service_name, service_action='status', systemd=None):
         time.sleep(post_command_wait_time_sec)
 
 
+def system_reboot(wait_time_sec=20):
+    """Reboots the system after a specified wait time.  Must be run as root
+
+    :param wait_time_sec: (int) number of sec to wait before performing the reboot
+    :return: None
+    :raises: OSError
+    """
+    log = logging.getLogger(mod_logger + '.system_reboot')
+
+    try:
+        wait_time_sec = int(wait_time_sec)
+    except ValueError:
+        raise CommandError('wait_time_sec must be an int, or a string convertible to an int')
+
+    log.info('Waiting {t} seconds before reboot...'.format(t=str(wait_time_sec)))
+    time.sleep(wait_time_sec)
+    command = ['shutdown', '-r', 'now']
+    log.info('Shutting down with command: [{c}]'.format(c=' '.join(command)))
+    time.sleep(2)
+    log.info('Shutting down...')
+    try:
+        result = run_command(command=command, timeout_sec=60)
+    except CommandError:
+        _, ex, trace = sys.exc_info()
+        msg = 'There was a problem running shutdown command: [{c}]\n{e}'.format(c=' '.join(command), e=str(ex))
+        raise OSError, msg, trace
+    if result['code'] != 0:
+        msg = 'Shutdown command exited with a non-zero code: [{c}], and produced output:\n{o}'.format(
+            c=str(result['code']), o=result['output'])
+        raise OSError(msg)
+
 def main():
     """Sample usage for this python module
 
