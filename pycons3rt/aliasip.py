@@ -10,6 +10,8 @@ import logging
 import socket
 import os
 import sys
+import shutil
+from datetime import datetime
 
 # Pass ImportError on boto3 for offline assets
 try:
@@ -326,6 +328,39 @@ def set_source_ip_for_interface(source_ip_address, desired_source_ip_address, de
         raise OSError(msg)
     log.info('Successfully configured the source IP for {d} to be: {i}'.format(
         d=device_name, i=desired_source_ip_address))
+
+
+def save_iptables(rules_file='/etc/sysconfig/iptables'):
+    """Saves iptables rules to the provided rules file
+
+    :return: None
+    :raises OSError
+    """
+    log = logging.getLogger(mod_logger + '.set_source_ip_for_interface')
+
+    # Run iptables-save to get the output
+    command = ['iptables-save']
+    try:
+        iptables_out = run_command(command, timeout_sec=20)
+    except CommandError:
+        _, ex, trace = sys.exc_info()
+        msg = 'There was a problem running iptables command: {c}\n{e}'.format(c=' '.join(command), e=str(ex))
+        raise OSError, msg, trace
+
+    # Error if iptables-save did not exit clean
+    if int(iptables_out['code']) != 0:
+        raise OSError('Command [{g}] exited with code [{c}] and output:\n{o}'.format(
+            g=' '.join(command), c=iptables_out['code'], o=iptables_out['output']))
+
+    # Back up the existing rules file if it exists
+    if os.path.isfile(rules_file):
+        time_now = datetime.now().strftime('%Y%m%d-%H%M%S')
+        backup_file = '{f}.{d}'.format(f=rules_file, d=time_now)
+        shutil.copy2(rules_file, backup_file)
+
+    # Save the output to the rules file
+    with open(rules_file, 'w') as f:
+        f.write(iptables_out['output'])
 
 
 def main():
