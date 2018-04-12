@@ -181,7 +181,7 @@ def add_root_ca(root_ca_path, alias, keystore_path=None, keystore_password='chan
         raise OSError, msg, trace
     if result['code'] != 0:
 
-        if alias in result['output'] and 'aleady exists' in result['output']:
+        if alias in result['output'] and 'already exists' in result['output']:
             raise AliasExistsError('Found alias [{a}] already existing in keystore: {k}\n{o}'.format(
                 a=alias, k=keystore_path, o=result['output']
             ))
