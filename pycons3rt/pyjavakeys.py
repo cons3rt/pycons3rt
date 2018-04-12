@@ -19,6 +19,18 @@ __author__ = 'Joe Yennaco'
 mod_logger = Logify.get_name() + '.pyjavakeys'
 
 
+class AliasExistsError(Exception):
+    """Error when a root CA import failed because the alias exists
+    """
+    pass
+
+
+class AliasImportError(Exception):
+    """General error when a root CA import fails
+    """
+    pass
+
+
 def alias_exists(alias, keystore_path=None, keystore_password='changeit'):
     """Checks if an alias already exists in a keystore
 
@@ -99,7 +111,7 @@ def add_root_ca(root_ca_path, alias, keystore_path=None, keystore_password='chan
     :param keystore_path:
     :param keystore_password:
     :return: None
-    :raises: OSError
+    :raises: OSError, AliasImportError, AliasExistsError
     """
     log = logging.getLogger(mod_logger + '.add_root_ca')
 
@@ -144,6 +156,9 @@ def add_root_ca(root_ca_path, alias, keystore_path=None, keystore_password='chan
                 log.error(msg)
                 raise OSError(msg)
 
+    log.info('Attempting to import alias [{a}] in keystore [{k}] from root ca file: {f}'.format(
+        a=alias, k=keystore_path, f=root_ca_path))
+
     # Log a warning and return if the alias already exists
     if alias_exists(alias=alias, keystore_path=keystore_path, keystore_password=keystore_password):
         log.warn('Alias {a} already exists in keystore: {k}, not updating'.format(a=alias, k=keystore_path))
@@ -165,9 +180,15 @@ def add_root_ca(root_ca_path, alias, keystore_path=None, keystore_password='chan
         log.error(msg)
         raise OSError, msg, trace
     if result['code'] != 0:
+
+        if alias in result['output'] and 'aleady exists' in result['output']:
+            raise AliasExistsError('Found alias [{a}] already existing in keystore: {k}\n{o}'.format(
+                a=alias, k=keystore_path, o=result['output']
+            ))
+
         msg = 'keytool command exited with a non-zero code: {c}, and produced output: {o}'.format(
             c=result['code'], o=result['output'])
         log.error(msg)
-        raise OSError(msg)
+        raise AliasImportError(msg)
     else:
         log.info('Successfully imported Root CA {c} with alias: {a}'.format(c=root_ca_path, a=alias))
