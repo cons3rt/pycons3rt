@@ -447,7 +447,10 @@ class Deployment(object):
             scenario_host_network_info = {'scenario_role_name': scenario_host}
             log.debug('Looking up network info from deployment properties for scenario host: {s}'.format(
                 s=scenario_host))
-            network_name_props = self.get_matching_property_names('.*{r}.*networkName'.format(r=scenario_host))
+            network_name_props = self.get_matching_property_names(
+                'cons3rt.fap.deployment.machine.*{r}.*networkName'.format(r=scenario_host)
+            )
+            log.debug('Found {n} network name props'.format(n=str(len(network_name_props))))
 
             network_info_list = []
             for network_name_prop in network_name_props:
