@@ -36,6 +36,18 @@ class CommandError(Exception):
     pass
 
 
+class SystemRebootError(Exception):
+    """Error executing the system reboot command
+    """
+    pass
+
+
+class SystemRebootTimeoutError(Exception):
+    """System times out executing a reboot
+    """
+    pass
+
+
 def process_killer(p):
     """Returns a function to kill the process p
     :param p: Process
@@ -1401,7 +1413,7 @@ def system_reboot(wait_time_sec=20):
 
     :param wait_time_sec: (int) number of sec to wait before performing the reboot
     :return: None
-    :raises: OSError
+    :raises: SystemRebootError, SystemRebootTimeoutError
     """
     log = logging.getLogger(mod_logger + '.system_reboot')
 
@@ -1421,11 +1433,17 @@ def system_reboot(wait_time_sec=20):
     except CommandError:
         _, ex, trace = sys.exc_info()
         msg = 'There was a problem running shutdown command: [{c}]\n{e}'.format(c=' '.join(command), e=str(ex))
-        raise OSError, msg, trace
+        raise SystemRebootError, msg, trace
     if result['code'] != 0:
         msg = 'Shutdown command exited with a non-zero code: [{c}], and produced output:\n{o}'.format(
             c=str(result['code']), o=result['output'])
-        raise OSError(msg)
+        raise SystemRebootError(msg)
+    log.info('Waiting 60 seconds to ensure the reboot completes...')
+    time.sleep(60)
+    msg = 'Reboot has not completed after 60 seconds'
+    log.error(msg)
+    raise SystemRebootTimeoutError(msg)
+
 
 def main():
     """Sample usage for this python module
