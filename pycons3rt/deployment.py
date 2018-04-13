@@ -422,7 +422,7 @@ class Deployment(object):
 
         :return:
         """
-        log = logging.getLogger(self.cls_logger + '.get_scenario_role_names')
+        log = logging.getLogger(self.cls_logger + '.set_scenario_role_names')
         is_master_props = self.get_matching_property_names('isMaster')
         for is_master_prop in is_master_props:
             role_name = is_master_prop.split('.')[-1]
@@ -441,7 +441,7 @@ class Deployment(object):
 
         :return: None
         """
-        log = logging.getLogger(self.cls_logger + '.get_network_info')
+        log = logging.getLogger(self.cls_logger + '.set_scenario_network_info')
 
         for scenario_host in self.scenario_role_names:
             scenario_host_network_info = {'scenario_role_name': scenario_host}
