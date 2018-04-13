@@ -1380,7 +1380,7 @@ def manage_service(service_name, service_action='status', systemd=None):
 
         # Determine the commands to run
         if service_action == 'enable':
-            command_list.append(['/sbin/chkconfig', '--add ', service_name])
+            command_list.append(['/sbin/chkconfig', '--add', service_name])
             command_list.append(['/sbin/chkconfig', service_name, 'on'])
         elif service_action == 'disable':
             command_list.append(['/sbin/chkconfig', service_name, 'off'])
