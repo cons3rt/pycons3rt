@@ -1335,12 +1335,13 @@ def is_systemd():
     return systemd
 
 
-def manage_service(service_name, service_action='status', systemd=None):
+def manage_service(service_name, service_action='status', systemd=None, output=True):
     """Use to run Linux sysv or systemd service commands
 
     :param service_name (str) name of the service to start
     :param service_action (str) action to perform on the service
     :param systemd (bool) True if the command should use systemd
+    :param output (bool) True to print output
     :return: None
     :raises: OSError
     """
@@ -1392,7 +1393,7 @@ def manage_service(service_name, service_action='status', systemd=None):
     for command in command_list:
         log.info('Attempting to run command: [{c}]'.format(c=' '.join(command)))
         try:
-            result = run_command(command, timeout_sec=30)
+            result = run_command(command, timeout_sec=30, output=output)
         except CommandError:
             _, ex, trace = sys.exc_info()
             msg = 'There was a problem running a service management command\n{e}'.format(e=str(ex))
