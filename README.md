@@ -30,15 +30,7 @@ This will create the Linux and Windows assets here:
 #### Asset Exit Codes (Linux):
 
 * 0 - Success
-* 1 - Could not determine DEPLOYMENT_HOME
-* 2 - deployment properties file not found
-* 3 - Unable to resolve GIT server domain name
-* 4 - Unable to clone git repo after 10 attempts
-* 5 - There was a problem installing prerequisites for pycons3rt
-* 6 - pycons3rt install file not found, src may not have been checked out or staged correctly
-* 7 - pycons3rt install did not complete successfully 
-* 8 - osutil file not found
-* 9 - Non-zero exit code found, see the cons3rt agent log for more details
+* Non-zero - See log file in /var/log/cons3rt for additional details
 
 #### Asset Exit Codes (Windows)
 
