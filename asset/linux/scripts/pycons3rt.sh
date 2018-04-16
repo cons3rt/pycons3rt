@@ -88,7 +88,7 @@ function read_deployment_properties() {
         logErr "Deployment properties file not found: ${deploymentPropertiesFile}"
         return 1
     fi
-    source ${deploymentPropertiesFile}
+    . ${deploymentPropertiesFile}
     return $?
 }
 
@@ -142,7 +142,7 @@ function install_prerequisites() {
 
     installCommand="${packageManagerCommand} ${prereqPackages}"
     logInfo "Using package manager command: ${installCommand}"
-    ${installCommand}
+    ${installCommand} >> ${logFile} 2>&1
     if [ $? -ne 0 ] ; then
         logErr "Unable to install prerequisites for the AWS CLI and python packages"
         return 2
