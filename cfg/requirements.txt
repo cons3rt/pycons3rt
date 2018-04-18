@@ -1,5 +1,6 @@
-testify
-pep8
-pyflakes
-ipython
-pylint
+awscli
+boto3
+netifaces
+jinja2
+requests==2.10.0
+requests[security]
