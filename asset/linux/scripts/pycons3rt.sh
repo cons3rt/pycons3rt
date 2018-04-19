@@ -46,14 +46,17 @@ sourceDir="${pycons3rtSourceDir}/pycons3rt"
 # Path to the pycons3rt linux install script
 pycons3rtInstaller=
 
-# Pycons3rt conf directory
-confDir="/etc/pycons3rt/conf"
-
-# Deployment properties filename
-deploymentPropsFile="deployment-properties.sh"
+# Python info
+pythonHome=
+pythonExe=
+pipExe=
+installPip=0
 
 # List of prereq packages to install before pip
 prereqPackages="gcc python-devel python-setuptools python-crypto"
+
+# Environment variable file
+pycons3rtEnv="/etc/profile.d/pycons3rt.sh"
 
 ####################### END GLOBAL VARIABLES #######################
 
@@ -92,6 +95,33 @@ function read_deployment_properties() {
     return $?
 }
 
+function verify_prerequisites() {
+    logInfo "Verifying prerequisites..."
+
+    # Ensure PYTHON2_HOME is set
+    if [ -z "${PYTHON2_HOME}" ] ; then
+        logErr "Required environment variable is not set: PYTHON2_HOME, this requires the Python asset to be installed"
+        return 1
+    else
+        pythonHome="${PYTHON2_HOME}"
+    fi
+    logInfo "Found PYTHON2_HOME set to: ${pythonHome}"
+
+    # Ensure the python executable is found
+    pythonExe="${pythonHome}/bin/python2.7"
+    if [ ! -f ${pythonExe} ] ; then
+        logErr "Python 2.7 executable file not found: ${pythonExe}"
+        return 2
+    fi
+
+    # Output the python version
+    logInfo "Using python version: "
+    ${pythonExe} --version >> ${logFile} 2>&1
+    if [ $? -ne 0 ] ; then logErr "There was a problem running [${pythonExe} --version]"; return 3; fi
+    logInfo "Found and ran python executable: ${pythonExe}"
+    return 0
+}
+
 function verify_dns() {
     # Tries to resolve a domain name for 5 minutes
     # Parameters:
@@ -103,7 +133,7 @@ function verify_dns() {
     local count=0
     while [ ${count} -le 150 ] ; do
         logInfo "Verifying domain name resolution for ${domainName}"
-        getent hosts ${domainName}
+        getent hosts ${domainName} >> ${logFile} 2>&1
         if [ $? -ne 0 ] ; then
             logWarn "Could not resolve domain name - ${domainName} - trying again in 2 seconds..."
         else
@@ -120,21 +150,16 @@ function verify_dns() {
 function install_prerequisites() {
     # Install pycons3rt prerequisites including boto3 and pip
     logInfo "Installing prerequisite packages..."
-	python --version
-	if [ $? -ne 0 ] ; then
-        logErr "Python not detected, and is a required dependency"
-        return 1
-    fi
 
     # Install gcc and python-dev as required
     packageManagerCommand="yum -y install"
-    which dnf
+    which dnf >> ${logFile} 2>&1
     if [ $? -eq 0 ] ; then
     logInfo "Detected dnf on this system, dnf will be used to install packages"
         packageManagerCommand="dnf --assumeyes install"
     fi
 
-    which apt-get
+    which apt-get >> ${logFile} 2>&1
     if [ $? -eq 0 ] ; then
         logInfo "Detected apt-get on this system, apt-get will be used to install packages"
         packageManagerCommand="apt-get -y install"
@@ -168,7 +193,7 @@ function install_pip_latest() {
 
     # Attempt to install pip
     logInfo "Attempting to install pip..."
-    python get-pip.py >> ${logFile} 2>&1
+    ${pythonExe} get-pip.py >> ${logFile} 2>&1
 
     # Ensure the install succeeded
     if [ $? -ne 0 ] ; then
@@ -201,7 +226,7 @@ function install_pip_alternate() {
 
     # Attempt to install pip
     logInfo "Attempting to install pip..."
-    python ${getPipFile} >> ${logFile} 2>&1
+    ${pythonExe} ${getPipFile} >> ${logFile} 2>&1
 
     # Ensure the install succeeded
     if [ $? -ne 0 ] ; then
@@ -214,11 +239,23 @@ function install_pip_alternate() {
 }
 
 function install_pip() {
-    logInfo "Installing pip..."
+    logInfo "Checking for existing pip in ${pythonHome}/bin..."
+    pipExeFile=$(ls ${pythonHome}/bin | grep "pip" | head -1)
+    pipExe=
 
-    # Skip install if pip already installed
-    which pip
-    if [ $? -eq 0 ] ; then logInfo "pip already installed!  Nothing to do..."; return 0; fi
+    if [ -z "${pipExeFile}" ] ; then
+        logInfo "pip not found, proceeding to install..."
+    else
+        pipExe="${pythonHome}/bin/${pipExeFile}"
+        logInfo "Found pip: ${pipExe}, testing version: "
+        ${pipExe} --version >> ${logFile} 2>&1
+        if [ $? -ne 0 ]; then
+            logErr "There was a problem running the existing pip install!"
+            return 1
+        else
+            logInfo "Ran existing pip successfully, no need to install"
+        fi
+    fi
 
     # Check the version of pip to install
     latestRes=1
@@ -230,75 +267,34 @@ function install_pip() {
     # Exit if it was successful
     if [ ${latestRes} -eq 0 ] ; then
         logInfo "Latest pip installed successfully!"
-        return 0
+    else
+        logWarn "Installing the latest pip failed, attempting to install an alternate version..."
+        install_pip_alternate
+        if [ $? -ne 0 ] ; then
+            logErr "There was a problem downloading or installing the alternate version of pip"
+            return 2
+        fi
+        logInfo "Alternate pip installed successfully!"
     fi
 
-    logWarn "Installing the latest pip failed, attempting to install an alternate version..."
-    install_pip_alternate
-    if [ $? -ne 0 ] ; then
-        logErr "There was a problem downloading or installing the alternate version of pip"
-        return 1
+    # Determine pipExe and ensure it is working
+    pipExeFile=$(ls ${pythonHome}/bin | grep "pip" | head -1)
+    pipExe=
+    if [ -z "${pipExeFile}" ] ; then
+        logErr "pip installed but was not found"
+        return 3
+    else
+        pipExe="${pythonHome}/bin/${pipExeFile}"
+        logInfo "Found pip: ${pipExe}, testing version: "
+        ${pipExe} --version >> ${logFile} 2>&1
+        if [ $? -ne 0 ]; then
+            logErr "pip installed but did not run!"
+            return 4
+        else
+            logInfo "Tested the installed pip successfully"
+        fi
     fi
-    logInfo "pip installed successfully!"
-    return 0
-}
-
-function install_pip_packages() {
-    logInfo "Attempting to install packages with pip..."
-
-    # Upgrade setuptools to the latest
-    logInfo "Upgrading setuptools..."
-    pip install setuptools --upgrade >> ${logFile} 2>&1
-    if [ $? -ne 0 ] ; then logErr "There was a problem upgrading setuptools"; return 1; fi
-
-	# Install Python packages using PIP
-	logInfo "Installing wheel 0.29.0..."
-	pip install wheel==0.29.0 >> ${logFile} 2>&1
-	if [ $? -ne 0 ] ; then logErr "There was a problem installing wheel==0.29.0"; return 2; fi
-
-	logInfo "Installing awscli..."
-	pip install awscli >> ${logFile} 2>&1
-	if [ $? -ne 0 ] ; then logErr "There was a problem installing awscli"; return 3; fi
-
-	logInfo "Installing boto3..."
-	pip install boto3 >> ${logFile} 2>&1
-	if [ $? -ne 0 ] ; then logErr "There was a problem installing boto3"; return 4; fi
-
-	logInfo "Installing netifaces..."
-	pip install netifaces >> ${logFile} 2>&1
-	if [ $? -ne 0 ] ; then logErr "There was a problem installing netifaces"; return 5; fi
-
-	logInfo "Installing jinja2..."
-	pip install jinja2 >> ${logFile} 2>&1
-	if [ $? -ne 0 ] ; then logErr "There was a problem installing jinja2"; return 6; fi
-
-	logInfo "Installing requests version 2.10.0..."
-	pip install requests==2.10.0 >> ${logFile} 2>&1
-	if [ $? -ne 0 ] ; then
-	    logInfo "Trouble installing requests==2.10.0, trying to install without a version..."
-	    pip install requests >> ${logFile} 2>&1
-	    if [ $? -ne 0 ] ; then logErr "There was a problem installing requests"; return 7; fi
-	fi
-
-	logInfo "Installing requests[security]..."
-	pip install requests[security] >> ${logFile} 2>&1
-    if [ $? -ne 0 ] ; then logErr "There was a problem installing requests[security]"; return 8; fi
-
-    # Remove python-crypto from RHEL systems
-	#if [[ ${packageManagerCommand} == *yum* ]] ; then
-	#    logInfo "This is a RHEL system, removing python-crypto..."
-	#    yum -y remove python-crypto >> ${logFile} 2>&1
-    #fi
-
-    logInfo "Setting permissions on the AWS executable..."
-    chmod +x /usr/bin/aws >> ${logFile} 2>&1
-    if [ $? -ne 0 ] ; then logErr "There was a problem setting permissions on /usr/bin/aws"; return 9; fi
-
-	logInfo "Verifying AWS CLI install ..."
-	aws --version >> ${logFile} 2>&1
-    if [ $? -ne 0 ] ; then logErr "There was a problem detecting the aws version"; return 10; fi
-
-    logInfo "All packages installed successfully"
+    logInfo "pip is ready!"
     return 0
 }
 
@@ -319,17 +315,13 @@ function git_clone() {
         logInfo "PYCONS3RT_BRANCH deployment property not found, git will clone the ${pycons3rtBranch} branch"
     else
         logInfo "Found deployment property PYCONS3RT_BRANCH: ${PYCONS3RT_BRANCH}"
-        pycons3rtBranch=${PYCONS3RT_BRANCH}
+        pycons3rtBranch="${PYCONS3RT_BRANCH}"
     fi
     logInfo "Git branch to clone: ${pycons3rtBranch}"
 
     # Create the pycons3rt log directory
     logInfo "Creating directory: ${pycons3rtRootDir}..."
     mkdir -p ${pycons3rtRootDir}/log >> ${logFile} 2>&1
-
-    # Create the src directory
-    logInfo "Creating directory: ${sourceDir}..."
-    mkdir -p ${sourceDir} >> ${logFile} 2>&1
 
     logInfo "Ensuring HOME is set..."
     if [ -z "${HOME}" ] ; then
@@ -339,6 +331,13 @@ function git_clone() {
     # Git clone the specified branch
     logInfo "Cloning the pycons3rt GIT repo..."
     for i in {1..10} ; do
+
+        # Remove the source directory if it exists
+        if [ -d ${sourceDir} ] ; then
+            logInfo "Removing: ${sourceDir}"
+            rm -Rf ${sourceDir} >> ${logFile} 2>&1
+        fi
+
         logInfo "Attempting to clone the GIT repo, attempt ${i} of 10..."
         git clone -b ${pycons3rtBranch} ${gitUrl} ${sourceDir} >> ${logFile} 2>&1
         result=$?
@@ -367,44 +366,101 @@ function git_clone() {
     return 0
 }
 
-function install_pycons3rt() {
-    logInfo "Attempting to install pycons3rt..."
+function install_pip_requirements() {
+    logInfo "Installing pip requirements from the requirements.txt file..."
 
-    # Install the pycons3rt python project into the system python lib
-    logInfo "Installing pycons3rt ..."
-    ${pycons3rtInstaller} >> ${logFile} 2>&1
-    if [ $? -ne 0 ] ; then logInfo "pycons3rt install exited with code: ${?}"; return 1; fi
+    if [ ! -d ${sourceDir} ] ; then
+        logErr "Source code directory not found, cannot install pip requirements: ${sourceDir}"
+        return 1
+    fi
 
-    logInfo "pycons3rt completed successfully!"
+    logInfo "Changing to directory: ${sourceDir}"
+    cd ${sourceDir} >> ${logFile} 2>&1
 
-    # Run the osutil to configure logging and directories
-    logInfo "Running osutil to configure logging and directories..."
-    osutil="${sourceDir}/pycons3rt/osutil.py"
-    if [ ! -f ${osutil} ] ; then logErr "osutil file not found: ${osutil}"; return 2; fi
+    # Ensure the requirements file exists
+    requirementsFileRelPath="./cfg/requirements.txt"
+    if [ ! -f ${requirementsFileRelPath} ] ; then
+        logErr "Requirements file not found at relative path: ${requirementsFileRelPath}"
+        return 2
+    fi
 
-    logInfo "Found osutil: [${osutil}], running..."
-    python ${osutil} >> ${logFile} 2>&1
-    if [ $? -ne 0 ] ; then logErr "There was a problem running osutil: ${osutil}"; return 3; fi
-
-    logInfo "Installed pycons3rt successfully!"
+    logInfo "Using pip: ${pipExe}"
+    logInfo "Attempting to install pip requirements from file at relative path: ${requirementsFileRelPath}"
+    ${pipExe} install -r ${requirementsFileRelPath} >> ${logFile} 2>&1
+    if [ $? -ne 0 ] ; then
+        logErr "There was a problem installing pip requirements"
+        return 3
+    fi
+    logInfo "Successfully installed pip requirements"
     return 0
 }
 
+function run_setup_install() {
+    logInfo "Attempting to run setup.py..."
+
+    if [ ! -d ${sourceDir} ] ; then
+        logErr "Source code directory not found, cannot run setup.py: ${sourceDir}"
+        return 1
+    fi
+
+    logInfo "Changing to directory: ${sourceDir}"
+    cd ${sourceDir} >> ${logFile} 2>&1
+
+    # Ensure setup.py exists
+    if [ ! -f setup.py ] ; then
+        logErr "setup.py file not found"
+        return 2
+    fi
+
+    logInfo "Running setup.py..."
+    ${pythonExe} setup.py install >> ${logFile} 2>&1
+    if [ $? -ne 0 ] ; then logErr "There was a problem running setup.py..."; return 3; fi
+    logInfo "setup.py ran successfully!"
+
+    # Run the osutil to configure logging and directories
+    logInfo "Running osutil to configure logging and directories..."
+    osutil="./pycons3rt/osutil.py"
+    if [ ! -f ${osutil} ] ; then logErr "osutil file not found at relative path: ${osutil}"; return 4; fi
+
+    logInfo "Found osutil: [${osutil}], running..."
+    ${pythonExe} ${osutil} >> ${logFile} 2>&1
+    if [ $? -ne 0 ] ; then logErr "There was a problem running osutil: ${osutil}"; return 5; fi
+
+    logInfo "pycons3rt installed successfully!"
+    return 0
+}
+
+function set_env() {
+    logInfo "Setting the environment variables..."
+    echo "export PYCONS3RT_PYTHON_HOME=${pythonHome}" > ${pycons3rtEnv}
+    echo "export PYCONS3RT_PYTHON=${pythonExe}" >> ${pycons3rtEnv}
+    echo "export PYCONS3RT_PIP=${pipExe}" >> ${pycons3rtEnv}
+    echo "export PYCONS3RT_HOME=${pycons3rtRootDir}" >> ${pycons3rtEnv}
+    echo "export PYCONS3RT_SOURCE_DIR=${pycons3rtSourceDir}" >> ${pycons3rtEnv}
+    chown root:root ${pycons3rtEnv} >> ${logFile} 2>&1
+    chmod 755 ${pycons3rtEnv} >> ${logFile} 2>&1
+    . ${pycons3rtEnv}
+    return $?
+}
 
 function main() {
     logInfo "Beginning ${logTag} install script..."
     set_deployment_home
     read_deployment_properties
+    verify_prerequisites
+    if [ $? -ne 0 ] ; then logErr "Unable to verify all prerequisites for pycons3rt"; return 1; fi
     install_prerequisites
-    if [ $? -ne 0 ] ; then logErr "There was a problem installing prerequisite packages"; return 1; fi
+    if [ $? -ne 0 ] ; then logErr "There was a problem installing prerequisite packages"; return 2; fi
     install_pip
-    if [ $? -ne 0 ] ; then logErr "There was a problem installing pip"; return 2; fi
-    install_pip_packages
-    if [ $? -ne 0 ] ; then logErr "There was a problem installing one or more pip packages"; return 3; fi
+    if [ $? -ne 0 ] ; then logErr "There was a problem installing pip"; return 3; fi
     git_clone
     if [ $? -ne 0 ] ; then logErr "There was a problem cloning the pycons3rt git repo"; return 4; fi
-    install_pycons3rt
-    if [ $? -ne 0 ] ; then logErr "There was a problem installing pycons3rt"; return 5; fi
+    install_pip_requirements
+    if [ $? -ne 0 ] ; then logErr "There was a problem installing one or more pip packages"; return 5; fi
+    run_setup_install
+    if [ $? -ne 0 ] ; then logErr "There was a problem installing pycons3rt"; return 6; fi
+    set_env
+    if [ $? -ne 0 ] ; then logErr "There was a problem configuring environment variables"; return 7; fi
     logInfo "Completed: ${logTag} install script"
     return 0
 }
