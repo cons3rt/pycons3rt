@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# The purpose of this script is make the homer assets for cons3rt import
+# The purpose of this script is make the pycons3rt assets for cons3rt import
 
 # Set log commands
 logTag="make-assets"
@@ -45,7 +45,7 @@ function create_asset_zip() {
 }
 
 function make_asset() {
-    assetName="asset-homer-$1"
+    assetName="asset-pycons3rt-$1"
     assetCreationDir="${BUILD_DIR}/${assetName}"
     subAssetDir="${ASSET_DIR}/$1"
 
