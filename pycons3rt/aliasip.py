@@ -39,6 +39,12 @@ __author__ = 'Joe Yennaco'
 mod_logger = Logify.get_name() + '.aliasip'
 
 
+class NetworkRestartError(Exception):
+    """Error executing a network restart
+    """
+    pass
+
+
 def validate_ip_address(ip_address):
     """Validate the ip_address
 
@@ -106,7 +112,8 @@ def ip_addr():
                 else:
                     for part in parts:
                         part = part.strip()
-                        if part.strip().startswith('eth') or part.strip().startswith('eno') or part.strip().startswith('ens'):
+                        if part.strip().startswith('eth') or part.strip().startswith('eno') or \
+                                part.strip().startswith('ens'):
                             device = part
                             ip_addr_output[device] = ip_address
     return ip_addr_output
@@ -153,27 +160,30 @@ def alias_ip_address(ip_address, interface, aws=False):
 
     # Add alias
     command = ['ifconfig', '{d}:0'.format(d=device_name), ip_address, 'up']
+    log.info('Running command to bring up the alias: {c}'.format(c=' '.join(command)))
     try:
         result = run_command(command)
     except CommandError:
-        raise
-    log.info('Command produced output:\n{o}'.format(o=result['output']))
-
-    if int(result['code']) != 0:
-        msg = 'ifconfig up command produced exit code: {c}'.format(c=result['code'])
-        log.error(msg)
-        raise OSError(msg)
+        _, ex, trace = sys.exc_info()
+        log.warn('CommandError: There was a problem running command: {c}\n{e}'.format(
+            c=' '.join(command), e=str(ex)))
+    else:
+        log.info('Command produced output:\n{o}'.format(o=result['output']))
+        if int(result['code']) != 0:
+            log.warn('ifconfig up command produced exit code: {c} and output:\n{o}'.format(
+                c=result['code'], o=result['output']))
+        else:
+            log.info('ifconfig up exited successfully')
 
     # Create interface file from the existing file
     base_ifcfg = os.path.abspath(os.path.join(os.sep, 'etc', 'sysconfig', 'network-scripts', 'ifcfg-{d}'.format(
             d=device_name)))
     alias_ifcfg = base_ifcfg + ':0'
+    log.info('Creating interface config file: {f}'.format(f=alias_ifcfg))
 
     # Ensure the base config file exists
     if not os.path.isfile(base_ifcfg):
-        msg = 'Required interface config file not found: {f}'.format(f=base_ifcfg)
-        log.error(msg)
-        raise OSError(msg)
+        raise OSError('Required interface config file not found: {f}'.format(f=base_ifcfg))
     else:
         log.info('Found base interface config file: {f}'.format(f=base_ifcfg))
 
@@ -183,7 +193,10 @@ def alias_ip_address(ip_address, interface, aws=False):
         try:
             os.remove(alias_ifcfg)
         except OSError:
-            raise
+            _, ex, trace = sys.exc_info()
+            msg = 'OSError: There was a problem removing existing alias config file: {f}\n{e}'.format(
+                f=alias_ifcfg, e=str(ex))
+            raise OSError, msg, trace
     else:
         log.info('No existing alias interface configuration exists yet: {f}'.format(f=alias_ifcfg))
 
@@ -199,10 +212,10 @@ def alias_ip_address(ip_address, interface, aws=False):
                         parts[0] = parts[0].strip()
                         parts[1] = parts[1].translate(None, '"').strip()
                         ifcfg_entries[parts[0]] = parts[1]
-    except(IOError, OSError) as e:
-        msg = 'Unable to read file: {f}\n{e}'.format(f=base_ifcfg, e=e)
-        log.error(msg)
-        raise OSError(msg)
+    except(IOError, OSError):
+        _, ex, trace = sys.exc_info()
+        msg = 'Unable to read file: {f}\n{e}'.format(f=base_ifcfg, e=str(ex))
+        raise OSError, msg, trace
 
     # Defined the ifcfg file entries for the alias
     ifcfg_entries['IPADDR'] = ip_address
@@ -217,37 +230,14 @@ def alias_ip_address(ip_address, interface, aws=False):
                 out_str = str(var) + '="' + str(val) + '"\n'
                 log.info('Adding entry to %s: %s', alias_ifcfg, out_str)
                 f.write(out_str)
-    except(IOError, OSError) as e:
-        msg = 'Unable to write to file: {f}\n{e}'.format(f=alias_ifcfg, e=e)
-        log.error(msg)
-        raise OSError(msg)
-    log.info('Restarting networking to ensure the changes take effect...')
-    try:
-        service_network_restart()
-    except CommandError:
-        raise
-
-    # Verify the alias was created
-    log.info('Verifying the alias was successfully created...')
-    command = ['/sbin/ifconfig']
-    try:
-        result = run_command(command)
-    except CommandError:
+    except(IOError, OSError):
         _, ex, trace = sys.exc_info()
-        msg = 'Unable to run ifconfig to verify the IP alias was created\n{e}'.format(e=str(ex))
-        log.error(msg)
+        msg = 'Unable to write to file: {f}\n{e}'.format(f=alias_ifcfg, e=str(ex))
         raise OSError, msg, trace
-    ifconfig = result['output']
 
-    if '{d}:0'.format(d=device_name) not in ifconfig:
-        msg = 'The alias was not created: {d}:0'.format(d=device_name)
-        log.error(msg)
-        raise OSError(msg)
-    else:
-        log.info('Alias created successfully!')
-
+    # Performing additional configuration for AWS
     if aws:
-        log.info('Performing additional configuration for AWS...')
+        log.info('Checking if this host is actually on AWS...')
         if is_aws():
             log.info('Performing additional configuration for AWS...')
             try:
@@ -257,13 +247,36 @@ def alias_ip_address(ip_address, interface, aws=False):
                 _, ex, trace = sys.exc_info()
                 msg = 'Unable to instruct AWS to add a secondary IP address <{ip}> on interface <{d}>\n{e}'.format(
                     ip=ip_address, d=device_name, e=str(ex))
-                log.error(msg)
                 raise OSError, msg, trace
             else:
                 log.info('AWS added the secondary IP address <{ip}> on interface <{d}>'.format(
                     ip=ip_address, d=device_name))
         else:
-            log.info('This system is not on AWS, no additional configuration required')
+            log.warn('This system is not on AWS, not performing additional configuration')
+
+    log.info('Restarting networking to ensure the changes take effect...')
+    try:
+        service_network_restart()
+    except CommandError:
+        _, ex, trace = sys.exc_info()
+        msg = 'CommandError: There was a problem restarting network services\n{e}'.format(e=str(ex))
+        raise NetworkRestartError, msg, trace
+
+    # Verify the alias was created
+    log.info('Verifying the alias was successfully created...')
+    command = ['/sbin/ifconfig']
+    try:
+        result = run_command(command)
+    except CommandError:
+        _, ex, trace = sys.exc_info()
+        log.warn('CommandError: Unable to run ifconfig to verify the IP alias was created\n{e}'.format(e=str(ex)))
+        return
+
+    # Check for the alias
+    if '{d}:0'.format(d=device_name) not in result['output']:
+        log.warn('The alias was not created yet, system reboot may be required: {d}:0'.format(d=device_name))
+    else:
+        log.info('Alias created successfully!')
 
 
 def set_source_ip_for_interface(source_ip_address, desired_source_ip_address, device_num=0):
@@ -300,7 +313,8 @@ def set_source_ip_for_interface(source_ip_address, desired_source_ip_address, de
     except ValueError:
         if isinstance(device_num, basestring):
             device_name = device_num
-            log.info('Provided device_num is not an int, assuming it is the full device name: {d}'.format(d=device_name))
+            log.info('Provided device_num is not an int, assuming it is the full device name: {d}'.format(
+                d=device_name))
         else:
             raise TypeError('device_num arg must be a string or int')
     else:
@@ -340,6 +354,7 @@ def save_iptables(rules_file='/etc/sysconfig/iptables'):
 
     # Run iptables-save to get the output
     command = ['iptables-save']
+    log.debug('Running command: iptables-save')
     try:
         iptables_out = run_command(command, timeout_sec=20)
     except CommandError:
@@ -356,9 +371,11 @@ def save_iptables(rules_file='/etc/sysconfig/iptables'):
     if os.path.isfile(rules_file):
         time_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         backup_file = '{f}.{d}'.format(f=rules_file, d=time_now)
+        log.debug('Creating backup file: {f}'.format(f=backup_file))
         shutil.copy2(rules_file, backup_file)
 
     # Save the output to the rules file
+    log.debug('Creating file: {f}'.format(f=rules_file))
     with open(rules_file, 'w') as f:
         f.write(iptables_out['output'])
 

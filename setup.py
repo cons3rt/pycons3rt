@@ -24,5 +24,5 @@ setup(
     url=get_init_val('url'),
     package_data={'': ['LICENSE', 'NOTICE']},
     license=get_init_val('license'),
-    packages=PACKAGES
+    packages=PACKAGES, requires=['botocore', 'boto3', 'netifaces', 'requests']
 )

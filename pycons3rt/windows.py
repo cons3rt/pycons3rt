@@ -66,17 +66,17 @@ def update_hosts_file(ip, entry):
     for line in fileinput.input(hosts_file, inplace=True):
         if re.search(ip, line):
             if line.split()[0] == ip:
-                log.info('Found IP {i} in line: {l}, updating...'.format(i=ip, l=line))
+                log.info('Found IP {i} in line: {li}, updating...'.format(i=ip, li=line))
                 log.info('Replacing with new line: {n}'.format(n=full_entry))
                 sys.stdout.write(full_entry)
                 updated = True
             else:
-                log.debug('Found ip {i} in line {l} but not an exact match, adding line back to hosts file {f}...'.
-                          format(i=ip, l=line, f=hosts_file))
+                log.debug('Found ip {i} in line {li} but not an exact match, adding line back to hosts file {f}...'.
+                          format(i=ip, li=line, f=hosts_file))
                 sys.stdout.write(line)
         else:
-            log.debug('IP address {i} not found in line, adding line back to hosts file {f}: {l}'.format(
-                i=ip, l=line, f=hosts_file))
+            log.debug('IP address {i} not found in line, adding line back to hosts file {f}: {li}'.format(
+                i=ip, li=line, f=hosts_file))
             sys.stdout.write(line)
 
     # Append the entry if the hosts file was not updated

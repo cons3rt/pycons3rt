@@ -66,7 +66,7 @@ def git_clone(url, clone_dir, branch='master', username=None, password=None, max
         stripped_url = str(url)[8:]
         log.info('Encoding password: {p}'.format(p=password))
         encoded_password = encode_password(password=password)
-        clone_url = 'https://{u}:{p}@{l}'.format(u=username, p=encoded_password, l=stripped_url)
+        clone_url = 'https://{u}:{p}@{v}'.format(u=username, p=encoded_password, v=stripped_url)
         log.info('Configured username/password for the GIT Clone URL: {u}'.format(u=url))
     else:
         clone_url = str(url)
@@ -119,12 +119,13 @@ def git_clone(url, clone_dir, branch='master', username=None, password=None, max
         except CommandError:
             _, ex, trace = sys.exc_info()
             log.warn('There was a problem running the git command: {c}\n{e}'.format(c=command, e=str(ex)))
-        if result['code'] != 0:
-            log.warn('The git command {g} failed and returned exit code: {c}\n{o}'.format(
-                g=command, c=result['code'], o=result['output']))
         else:
-            log.info('Successfully cloned/updated GIT repo: {u}'.format(u=url))
-            return
+            if result['code'] != 0:
+                log.warn('The git command {g} failed and returned exit code: {c}\n{o}'.format(
+                    g=command, c=result['code'], o=result['output']))
+            else:
+                log.info('Successfully cloned/updated GIT repo: {u}'.format(u=url))
+                return
         if attempt_num == max_retries:
             msg = 'Attempted unsuccessfully to clone the git repo after {n} attempts'.format(n=attempt_num)
             log.error(msg)

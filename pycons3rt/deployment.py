@@ -544,7 +544,7 @@ class Deployment(object):
         try:
             deployment_run_id = int(deployment_run_id_val)
         except ValueError:
-            log.debug('Deployment run ID found was unable to convert to an int: {d}'.format(d=deployment_run_id))
+            log.debug('Deployment run ID found was unable to convert to an int: {d}'.format(d=deployment_run_id_val))
             return
         self.deployment_run_id = deployment_run_id
         log.info('Found deployment run ID: {i}'.format(i=str(self.deployment_run_id)))
