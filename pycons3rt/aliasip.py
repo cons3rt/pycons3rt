@@ -106,7 +106,7 @@ def ip_addr():
                 else:
                     for part in parts:
                         part = part.strip()
-                        if part.strip().startswith('eth') or part.strip().startswith('eno'):
+                        if part.strip().startswith('eth') or part.strip().startswith('eno') or part.strip().startswith('ens'):
                             device = part
                             ip_addr_output[device] = ip_address
     return ip_addr_output
