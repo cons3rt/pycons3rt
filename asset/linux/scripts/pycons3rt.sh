@@ -4,8 +4,8 @@
 if [ -f /etc/bashrc ] ; then
     . /etc/bashrc
 fi
-if [ -f /etc/environment ] ; then
-    . /etc/environment
+if [ -f /etc/profile ] ; then
+    . /etc/profile
 fi
 
 # Establish a log file and log tag
@@ -50,7 +50,6 @@ pycons3rtInstaller=
 pythonHome=
 pythonExe=
 pipExe=
-installPip=0
 
 # List of prereq packages to install before pip
 prereqPackages="gcc python-devel python-setuptools python-crypto"
@@ -119,6 +118,14 @@ function verify_prerequisites() {
     ${pythonExe} --version >> ${logFile} 2>&1
     if [ $? -ne 0 ] ; then logErr "There was a problem running [${pythonExe} --version]"; return 3; fi
     logInfo "Found and ran python executable: ${pythonExe}"
+
+    # Ensure the pip executable is found
+    pip --version >> ${logFile} 2>&1
+    if [ $? -ne 0 ] ; then logErr "There was a problem running [pip --version]"; return 4; fi
+
+    # Set pipExe
+    pipExe=$(which pip)
+    logInfo "Using pip: ${pipExe}"
     return 0
 }
 
@@ -176,125 +183,6 @@ function install_prerequisites() {
     fi
 
     logInfo "Successfully installed the pycons3rt prerequisites"
-    return 0
-}
-
-function install_pip_latest() {
-    logInfo "Attempting to download the latest pip from URL: ${pipLatestDownloadUrl}"
-
-    cd /root
-    curl -O "${pipLatestDownloadUrl}" >> ${logFile} 2>&1
-
-    # Ensure the download succeeded
-    if [ $? -ne 0 ] ; then
-        logErr "There was a problem downloading pip from URL: ${pipLatestDownloadUrl}"
-        return 1
-    fi
-
-    # Attempt to install pip
-    logInfo "Attempting to install pip..."
-    ${pythonExe} get-pip.py >> ${logFile} 2>&1
-
-    # Ensure the install succeeded
-    if [ $? -ne 0 ] ; then
-        logErr "There was a problem installing the latest pip"
-        return 2
-    fi
-
-    logInfo "Latest pip installed successfully"
-    return 0
-}
-
-function install_pip_alternate() {
-    logInfo "Attempting to download an alternate version of pip [${pipAlternateVersion}] from URL: ${pipJackpineDownloadUrl}"
-
-    cd /root
-    curl -O "${pipJackpineDownloadUrl}" >> ${logFile} 2>&1
-
-    # Ensure the download succeeded
-    if [ $? -ne 0 ] ; then
-        logErr "There was a problem downloading pip from URL: ${pipJackpineDownloadUrl}"
-        return 1
-    fi
-
-    # Ensure the get-pip.py file exists
-    getPipFile="/root/get-pip-${pipAlternateVersion}.py"
-    if [ ! -f ${getPipFile} ] ; then
-        logErr "File not found, may not have downloaded: ${getPipFile}"
-        return 2
-    fi
-
-    # Attempt to install pip
-    logInfo "Attempting to install pip..."
-    ${pythonExe} ${getPipFile} >> ${logFile} 2>&1
-
-    # Ensure the install succeeded
-    if [ $? -ne 0 ] ; then
-        logErr "There was a problem installing the pip version: ${pipAlternateVersion}"
-        return 2
-    fi
-
-    logInfo "pip version [${pipAlternateVersion}] installed successfully"
-    return 0
-}
-
-function install_pip() {
-    logInfo "Checking for existing pip in ${pythonHome}/bin..."
-    pipExeFile=$(ls ${pythonHome}/bin | grep "pip" | head -1)
-    pipExe=
-
-    if [ -z "${pipExeFile}" ] ; then
-        logInfo "pip not found, proceeding to install..."
-    else
-        pipExe="${pythonHome}/bin/${pipExeFile}"
-        logInfo "Found pip: ${pipExe}, testing version: "
-        ${pipExe} --version >> ${logFile} 2>&1
-        if [ $? -ne 0 ]; then
-            logErr "There was a problem running the existing pip install!"
-            return 1
-        else
-            logInfo "Ran existing pip successfully, no need to install"
-        fi
-    fi
-
-    # Check the version of pip to install
-    latestRes=1
-    if [[ ${pipVersion} == "LATEST" ]] ; then
-        install_pip_latest
-        latestRes=$?
-    fi
-
-    # Exit if it was successful
-    if [ ${latestRes} -eq 0 ] ; then
-        logInfo "Latest pip installed successfully!"
-    else
-        logWarn "Installing the latest pip failed, attempting to install an alternate version..."
-        install_pip_alternate
-        if [ $? -ne 0 ] ; then
-            logErr "There was a problem downloading or installing the alternate version of pip"
-            return 2
-        fi
-        logInfo "Alternate pip installed successfully!"
-    fi
-
-    # Determine pipExe and ensure it is working
-    pipExeFile=$(ls ${pythonHome}/bin | grep "pip" | head -1)
-    pipExe=
-    if [ -z "${pipExeFile}" ] ; then
-        logErr "pip installed but was not found"
-        return 3
-    else
-        pipExe="${pythonHome}/bin/${pipExeFile}"
-        logInfo "Found pip: ${pipExe}, testing version: "
-        ${pipExe} --version >> ${logFile} 2>&1
-        if [ $? -ne 0 ]; then
-            logErr "pip installed but did not run!"
-            return 4
-        else
-            logInfo "Tested the installed pip successfully"
-        fi
-    fi
-    logInfo "pip is ready!"
     return 0
 }
 
@@ -451,8 +339,6 @@ function main() {
     if [ $? -ne 0 ] ; then logErr "Unable to verify all prerequisites for pycons3rt"; return 1; fi
     install_prerequisites
     if [ $? -ne 0 ] ; then logErr "There was a problem installing prerequisite packages"; return 2; fi
-    install_pip
-    if [ $? -ne 0 ] ; then logErr "There was a problem installing pip"; return 3; fi
     git_clone
     if [ $? -ne 0 ] ; then logErr "There was a problem cloning the pycons3rt git repo"; return 4; fi
     install_pip_requirements

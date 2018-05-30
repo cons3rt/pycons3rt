@@ -24,8 +24,9 @@ This will create the Linux and Windows assets here:
 
 #### Asset Prerequisites
 
-1. Python (already installed on most Linux distros)
 1. Git
+1. Python (already installed on most Linux distros)
+1. pip for python
 
 #### Asset Exit Codes (Linux):
 
