@@ -443,7 +443,21 @@ class Cons3rtUtil(object):
         log.info('Attempting to generate a rest key for user {u} in project {p}...'.format(u=user, p=project))
         command_string = '-requestapitoken {u} \'{p}\''.format(u=user, p=project)
         result = self.run_security_admin_command(command_string)
-        rest_key = result['output'].split()[6]
+
+        # Parse the ReST key from the output
+        words = result['output'].split()
+        rest_key = None
+        i = 0
+        for word in words:
+            if word == 'token' and (i + 1) < len(words):
+                rest_key = words[words.index(word) + 1]
+                break
+            i += 1
+
+        # Error if the ReST key was not found
+        if rest_key is None:
+            raise Cons3rtUtilError('Unable to parse ReST API key from output: {o}'.format(o=result['output']))
+
         log.info('Successfully generated ReST key for user {u} in project {p}: {k}'.format(
             k=rest_key, u=user, p=project))
         return rest_key
