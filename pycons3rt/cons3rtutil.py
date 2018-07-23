@@ -301,7 +301,7 @@ class Cons3rtUtil(object):
             else:
                 log.info('Email: {e}'.format(e=email))
 
-            command_string = '-createuser {u} -email {e} -firstname Admin -lastname User'.format(u=user, e=email)
+            command_string = '-requestuser {u} -email {e} -firstname Admin -lastname User'.format(u=user, e=email)
             self.run_security_admin_command(command_string)
 
         # Create a random password
