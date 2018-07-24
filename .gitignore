@@ -1,7 +1,9 @@
 build
 venv
+dist
 .idea
 .project
+*egg-info*
 pycons3rt/*.pyc
 pycons3rt/*.pyo
 pycons3rt/bin

@@ -11,8 +11,27 @@
 * Posts CONS3RT run info to Slack
 * Establishes a logging infrastructure for python CONS3RT assets
 
+## Installation
 
-### pycons3rt Assets
+### Install from pip
+
+If you have Python 2.7 installed, you can run:
+
+`pip install pycons3rt`
+
+Also you can install specific versions:
+
+`pip install pycons3rt==0.0.2`
+
+### Install from source
+
+~~~
+git clone https://github.com/cons3rt/pycons3rt
+cd pycons3rt
+python setup.py
+~~~
+
+### Install with CONS3RT assets
 
 Search for community `pycons3rt` software assets in HmC or cons3rt.com to use.
 
@@ -24,6 +43,12 @@ This will create your own Linux and Windows pycons3rt assets for import:
 
     ./build/asset-pycons3rt-linux.zip
     ./build/asset-pycons3rt-windows.zip
+
+## Configuration
+
+Once installed, run the following command to set up pycons3rt:
+
+`pycons3rt_setup`
 
 ### Asset Prerequisites
 
