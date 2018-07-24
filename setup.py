@@ -1,28 +1,57 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-from distutils.core import setup
-
-PACKAGES = ['pycons3rt', 'pycons3rt.awsapi']
 
 
-def get_init_val(val, packages=PACKAGES):
-    pkg_init = "%s/__init__.py" % PACKAGES[0]
-    value = '__%s__' % val
-    fn = open(pkg_init)
-    for line in fn.readlines():
-        if line.startswith(value):
-            return line.split('=')[1].strip().strip("'")
+import sys
+import os
+from setuptools import setup, find_packages
 
 
-setup(
-    name='py-%s' % get_init_val('title'),
-    version=get_init_val('version'),
-    description=get_init_val('description'),
+py_version = sys.version_info[:2]
+
+
+# Ensure supported python version
+if py_version < (2, 7):
+    raise RuntimeError('pycons3rt requires Python 2.7 or later')
+elif py_version >= (3, 0):
+    raise RuntimeError('pycons3rt does not support Python3 at this time')
+
+
+here = os.path.abspath(os.path.dirname(__file__))
+
+
+# Get the version
+version_txt = os.path.join(here, 'pycons3rt/VERSION.txt')
+pycons3rt_version = open(version_txt).read().strip()
+
+
+# Get the requirements
+requirements_txt = os.path.join(here, 'cfg/requirements.txt')
+requirements = []
+with open(requirements_txt) as f:
+    for line in f:
+        requirements.append(line.strip())
+
+
+dist = setup(
+    name='pycons3rt',
+    version=pycons3rt_version,
+    description='A python library for CONS3RT assets',
     long_description=open('README.md').read(),
-    author=get_init_val('author'),
-    url=get_init_val('url'),
-    package_data={'': ['LICENSE', 'NOTICE']},
-    license=get_init_val('license'),
-    packages=PACKAGES, requires=['botocore', 'boto3', 'netifaces', 'requests']
+    author='Joe Yennaco',
+    author_email='joe.yennaco@jackpinetech.com',
+    url='https://github.com/cons3rt/pycons3rt',
+    include_package_data=True,
+    license='GNU GPL v3',
+    packages=find_packages(),
+    zip_safe=True,
+    install_requires=requirements,
+    entry_points={
+        'console_scripts': [
+            'pycons3rt_setup = pycons3rt.osutil:main',
+        ],
+    },
+    classifiers=[
+        'Programming Language :: Python :: 2.7',
+        'Operating System :: OS Independent'
+    ]
 )
