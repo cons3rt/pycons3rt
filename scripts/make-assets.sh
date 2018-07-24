@@ -62,11 +62,7 @@ function make_asset() {
     fi
 
     # Copy license file to asset
-    if [ -f ${subAssetDir}/LICENSE.md ] ; then
-        run_and_check_status cp -f ${subAssetDir}/LICENSE.md ${assetCreationDir}/
-    else
-        run_and_check_status cp -f ${REPO_DIR}/LICENSE.md ${assetCreationDir}/
-    fi
+    run_and_check_status cp -f ${REPO_DIR}/LICENSE ${assetCreationDir}/
 
     # Copy the media directory if it exists
     if [ -d ${subAssetDir}/media ] ; then
