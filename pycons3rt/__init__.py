@@ -16,7 +16,7 @@
 
 pycons3rt
 ~~~~~~~~~
-:copyright: (c) 2016 by Jackpine Technologies Corporation.
+:copyright: (c) 2018 by Jackpine Technologies Corporation.
 :license: ISC, see LICENSE for more details.
 
 """
@@ -30,15 +30,26 @@ from . import logify
 from . import nexus
 from . import slack
 from . import windows
-
+from . import asset
+from . import assetmailer
+from . import pygit
+from . import pyjavakeys
 
 __title__ = 'pycons3rt'
-__version__ = '0.0.1'
-__description__ = 'Collection of python packages support CONS3RT asset installations.'
-__url__ = 'https://software.forge.mil/sf/projects/testforge'
-__build__ = 0
-__author__ = 'Joe Yennaco'
-__author_email__ = 'joe.yennaco@jackpinetech.com'
-__license__ = 'DoD Community Source Usage Agreement Version 1.1'
-__copyright__ = 'Copyright 2016 by Jackpine Technologies Corporation'
-__all__ = ['osutil', 'bash', 'aliasip', 'deployment', 'cons3rtutil', 'dyndict', 'logify', 'nexus', 'slack', 'windows']
+__name__ = 'pycons3rt'
+__all__ = [
+    'osutil',
+    'bash',
+    'aliasip',
+    'deployment',
+    'cons3rtutil',
+    'dyndict',
+    'logify',
+    'nexus',
+    'slack',
+    'windows',
+    'asset',
+    'assetmailer',
+    'pygit',
+    'pyjavakeys'
+]
