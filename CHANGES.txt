@@ -1,7 +1,7 @@
 
 
-0.0.3
-=====
+0.0.3(dev)
+===========
 
 * Added asset.py with methods to validate an asset structure and
 creates an asset zip file
