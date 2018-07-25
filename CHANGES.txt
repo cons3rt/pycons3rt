@@ -1,0 +1,13 @@
+
+
+0.0.3
+=====
+
+* Added asset.py with methods to validate an asset structure and
+creates an asset zip file
+
+
+0.0.2
+=====
+
+* Initial packagable version installable by pip
