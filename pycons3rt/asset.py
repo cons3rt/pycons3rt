@@ -382,10 +382,12 @@ def main():
         # Get the asset directory and ensure it exists
         asset_dir_provided = args.asset_dir.strip()
 
+        # Handle ~ as the leading char
         if asset_dir_provided.startswith('~'):
             asset_dir = str(asset_dir_provided.replace('~', os.path.expanduser('~')))
         else:
             asset_dir = str(asset_dir_provided)
+
         if not os.path.isdir(asset_dir):
             asset_dir = os.path.join(working_dir, asset_dir)
         if not os.path.isdir(asset_dir):
@@ -396,7 +398,14 @@ def main():
 
     # Determine the destination directory
     if args.dest_dir:
-        dest_dir = args.dest_dir.strip()
+        dest_dir_provided = args.dest_dir.strip()
+
+        # Handle ~ as the leading char
+        if dest_dir_provided.startswith('~'):
+            dest_dir = str(dest_dir_provided.replace('~', os.path.expanduser('~')))
+        else:
+            dest_dir = str(dest_dir_provided)
+
         if not os.path.isdir(dest_dir):
             print('ERROR: Destination directory not found: {d}'.format(d=dest_dir))
             return 3
