@@ -1,11 +1,11 @@
 
-
-0.0.3.dev0 (in development)
-===========================
+0.0.3
+=====
 
 * Added asset.py with methods to validate an asset structure and
 creates an asset zip file
-
+* Added an asset CLI to create asset zip files and validate asset
+directories.  To use: "asset create --asset_dir=/path/to/asset/"
 
 0.0.2
 =====
