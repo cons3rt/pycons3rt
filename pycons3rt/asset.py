@@ -10,6 +10,7 @@ import os
 import sys
 import zipfile
 import contextlib
+import argparse
 
 from logify import Logify
 from bash import mkdir_p
@@ -82,6 +83,11 @@ potential_license_files = [
 # All items to ignore when creating assets
 ignore_items = ignore_files + ignore_dirs
 
+# Current shell working directory
+try:
+    working_dir = os.environ['PWD']
+except KeyError:
+    working_dir = os.getcwd()
 
 class Cons3rtAssetStructureError(Exception):
     """Simple exception type for handling errors with CONS3RT asset structure
@@ -313,3 +319,108 @@ def make_asset_zip(asset_dir_path, destination_directory=None):
         raise AssetZipCreationError, msg, trace
     log.info('Successfully created asset zip file: {f}'.format(f=zip_file_path))
     return zip_file_path
+
+
+def validate(asset_dir):
+    """Command line call to validate an asset structure
+
+    :param asset_dir: (full path to the asset dir)
+    :return: (int)
+    """
+    try:
+        asset_name = validate_asset_structure(asset_dir_path=asset_dir)
+    except Cons3rtAssetStructureError:
+        _, ex, trace = sys.exc_info()
+        msg = 'Cons3rtAssetStructureError: Problem with asset validation\n{e}'.format(e=str(ex))
+        print('ERROR: {m}'.format(m=msg))
+        return 1
+    print('Validated asset with name: {n}'.format(n=asset_name))
+    return 0
+
+
+def create(asset_dir, dest_dir):
+    """Command line call to create an asset zip
+
+    :param asset_dir: (full path to the asset dir)
+    :param dest_dir: (full path to the destination directory)
+    :return: (int)
+    """
+    val = validate(asset_dir=asset_dir)
+    if val != 0:
+        return 1
+    try:
+        asset_zip = make_asset_zip(asset_dir_path=asset_dir, destination_directory=dest_dir)
+    except AssetZipCreationError:
+        _, ex, trace = sys.exc_info()
+        msg = 'AssetZipCreationError: Problem with asset zip creation\n{e}'.format(e=str(ex))
+        print('ERROR: {m}'.format(m=msg))
+        return 1
+    print('Created asset zip file: {z}'.format(z=asset_zip))
+    return 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description='cons3rt asset CLI')
+    parser.add_argument('command', help='Command for the Asset CLI')
+    parser.add_argument('--asset_dir', help='Path to the asset to import')
+    parser.add_argument('--dest_dir', help='Destination directory for the asset zip (default is Downloads)')
+    args = parser.parse_args()
+
+    valid_commands = ['create', 'validate']
+    valid_commands_str = ','.join(valid_commands)
+
+    # Get the command
+    command = args.command.strip().lower()
+
+    # Ensure the command is valid
+    if command not in valid_commands:
+        print('Invalid command found [{c}]\n'.format(c=command) + valid_commands_str)
+        return 1
+
+    # Determine asset_dir, use current directory if not provided
+    if args.asset_dir:
+        # Get the asset directory and ensure it exists
+        asset_dir_provided = args.asset_dir.strip()
+
+        if asset_dir_provided.startswith('~'):
+            asset_dir = str(asset_dir_provided.replace('~', os.path.expanduser('~')))
+        else:
+            asset_dir = str(asset_dir_provided)
+        if not os.path.isdir(asset_dir):
+            asset_dir = os.path.join(working_dir, asset_dir)
+        if not os.path.isdir(asset_dir):
+            print('ERROR: Asset directory not found: {d}'.format(d=asset_dir_provided))
+            return 2
+    else:
+        asset_dir = working_dir
+
+    # Determine the destination directory
+    if args.dest_dir:
+        dest_dir = args.dest_dir.strip()
+        if not os.path.isdir(dest_dir):
+            print('ERROR: Destination directory not found: {d}'.format(d=dest_dir))
+            return 3
+    else:
+        dest_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
+        if not os.path.isdir(dest_dir):
+            dest_dir = os.path.join(os.path.expanduser('~'), 'Download')
+        if not os.path.isdir(dest_dir):
+            dest_dir = os.path.expanduser('~')
+
+    # Error if the destination directory is not found
+    if not os.path.isdir(dest_dir):
+        print('ERROR: Unable to find a destination directory for the asset, please specify with "--dest-dir"')
+        return 4
+
+    # Process the command
+    res = 0
+    if command == 'validate':
+        res = validate(asset_dir=asset_dir)
+    elif command == 'create':
+        res = create(asset_dir=asset_dir, dest_dir=dest_dir)
+    return res
+
+
+if __name__ == '__main__':
+    exit_code = main()
+    sys.exit(exit_code)

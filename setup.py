@@ -48,6 +48,7 @@ dist = setup(
     entry_points={
         'console_scripts': [
             'pycons3rt_setup = pycons3rt.osutil:main',
+            'asset = pycons3rt.asset:main'
         ],
     },
     classifiers=[
