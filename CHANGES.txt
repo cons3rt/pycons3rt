@@ -1,4 +1,10 @@
 
+0.0.4.dev0
+==========
+
+* Added the ability to skip files with specific extensions to
+create the asset zip file
+
 0.0.3
 =====
 
@@ -6,6 +12,7 @@
 creates an asset zip file
 * Added an asset CLI to create asset zip files and validate asset
 directories.  To use: "asset create --asset_dir=/path/to/asset/"
+
 
 0.0.2
 =====
