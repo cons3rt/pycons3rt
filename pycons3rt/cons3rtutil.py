@@ -344,7 +344,7 @@ class Cons3rtUtil(object):
         self.run_security_admin_command(command_string)
         log.info('Successfully assigned system role {r} to user {u}'.format(u=user, r=role))
 
-    def create_project(self, project_name, description=''):
+    def create_project(self, project_name, team_name, description=''):
         """Creates a CONS3RT project with the specified name
 
         :param project_name: String name of the Project
@@ -354,6 +354,11 @@ class Cons3rtUtil(object):
         """
         log = logging.getLogger(self.cls_logger + '.assign_system_role')
         if not isinstance(project_name, basestring):
+            msg = 'project_name argument must be a string'
+            log.error(msg)
+            raise Cons3rtUtilError(msg)
+
+        if not isinstance(team_name, basestring):
             msg = 'project_name argument must be a string'
             log.error(msg)
             raise Cons3rtUtilError(msg)
@@ -370,8 +375,10 @@ class Cons3rtUtil(object):
 
         # Create the new project if it does not exist
         if not project_exists:
-            log.info('Attempting to create project with name: {p}'.format(p=project_name))
-            command_string = '-createproject \'{p}\' -description \'{d}\''.format(p=project_name, d=description)
+            log.info('Attempting to create project with name [{p}] for team [{t}]'.format(
+                p=project_name, t=team_name))
+            command_string = '-createproject \'{p}\' \'{t}\' -description \'{d}\''.format(
+                p=project_name, t=team_name, d=description)
             self.run_security_admin_command(command_string)
             log.info('Created project: {p}'.format(p=project_name))
 
