@@ -25,14 +25,23 @@ mod_logger = Logify.get_name() + '.asset'
 ignore_files = [
     '.DS_Store',
     '.gitignore',
-    '._'
+    '._',
+]
+
+ignore_file_extensions = [
+    'iml'
 ]
 
 # Directories to ignore when creating assets
 ignore_dirs = [
     '.git',
     '.svn',
-    '.cons3rt'
+    '.cons3rt',
+    '.idea',
+    '.metadata',
+    '.project',
+    '.settings',
+    '.gradle'
 ]
 
 # Acceptable items at the asset root
@@ -99,6 +108,15 @@ class AssetZipCreationError(Exception):
     """Simple exception type for handling errors creating the asset zip file
     """
     pass
+
+
+def ignore_by_extension(item_path):
+    if not os.path.isfile(item_path):
+        return False
+    for ignore_file_extension in ignore_file_extensions:
+        if item_path.endswith('.{e}'.format(e=ignore_file_extension)):
+            return True
+    return False
 
 
 def validate_asset_structure(asset_dir_path):
@@ -207,6 +225,8 @@ def validate_asset_structure(asset_dir_path):
             continue
         elif item in ignore_items:
             continue
+        elif ignore_by_extension(item_path=item_path):
+            continue
         elif item in acceptable_dirs and os.path.isdir(item_path):
             continue
         else:
@@ -301,6 +321,10 @@ def make_asset_zip(asset_dir_path, destination_directory=None):
                         if f.startswith(ignore_file):
                             skip = True
                             break
+
+                    # Skip if the file ends with the specified extension
+                    if ignore_by_extension(item_path=file_path):
+                        skip = True
 
                     if skip:
                         log.info('Skipping file: {f}'.format(f=file_path))
