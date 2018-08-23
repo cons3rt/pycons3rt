@@ -110,7 +110,7 @@ class ImageUtil(object):
                 a=ami_id, n=ex.__class__.__name__, e=str(ex))
             raise ImageUtilError, msg, trace
         if cons3rt_uuid is None:
-            raise ImageUtilError('AMI tag cons3rtutil not found on image ID: {a}'.format(a=ami_id))
+            raise ImageUtilError('AMI tag cons3rtuuid not found on image ID: {a}'.format(a=ami_id))
         log.info('Found image tag for cons3rtuuid: {u}'.format(u=cons3rt_uuid))
         log.debug('Found image tags: {t}'.format(t=image_tags))
 
@@ -295,7 +295,7 @@ class ImageUtil(object):
                 a=ami_id, n=ex.__class__.__name__, e=str(ex))
             raise ImageUtilError, msg, trace
         if cons3rt_uuid is None:
-            raise ImageUtilError('AMI tag cons3rtutil not found on image ID: {a}'.format(a=ami_id))
+            raise ImageUtilError('AMI tag cons3rtuuid not found on image ID: {a}'.format(a=ami_id))
         log.info('Found image tag for cons3rtuuid: {u}'.format(u=cons3rt_uuid))
         log.debug('Found image tags: {t}'.format(t=image_tags))
 

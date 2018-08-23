@@ -4,6 +4,7 @@
 
 * Added the ability to skip files with specific extensions to
 create the asset zip file
+* Removed cons3rtutil.py, it is not useful to anybody
 
 0.0.3
 =====

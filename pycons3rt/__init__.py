@@ -24,7 +24,6 @@ from . import osutil
 from . import bash
 from . import aliasip
 from . import deployment
-from . import cons3rtutil
 from . import dyndict
 from . import logify
 from . import nexus
@@ -42,7 +41,6 @@ __all__ = [
     'bash',
     'aliasip',
     'deployment',
-    'cons3rtutil',
     'dyndict',
     'logify',
     'nexus',
