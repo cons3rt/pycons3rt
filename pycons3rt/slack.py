@@ -127,6 +127,7 @@ class SlackMessage(object):
         attachments, then clears the attachments array.
 
         :return: None
+        :raises: OSError
         """
         log = logging.getLogger(self.cls_logger + '.send')
 
@@ -137,15 +138,21 @@ class SlackMessage(object):
         log.debug('Using payload: %s', self.payload)
         try:
             json_payload = json.JSONEncoder().encode(self.payload)
-        except(TypeError, ValueError, OverflowError) as e:
-            log.error('There was a problem encoding the JSON payload\n%s', e)
-            raise
+        except(TypeError, ValueError, OverflowError):
+            _, ex, trace = sys.exc_info()
+            msg = 'There was a problem encoding the JSON payload\n{e}'.format(e=str(ex))
+            OSError, msg, trace
         else:
             log.debug('JSON payload: %s', json_payload)
 
         # Post to Slack!
         log.debug('Posting message to Slack...')
-        result = requests.post(url=self.webhook_url, data=json_payload)
+        try:
+            result = requests.post(url=self.webhook_url, data=json_payload)
+        except requests.exceptions.ConnectionError:
+            _, ex, trace = sys.exc_info()
+            msg = '{n}: There was a problem posting to Slack\n{e}'.format(n=ex.__class__.__name__, e=str(ex))
+            raise OSError, msg, trace
 
         # Check return code
         if result.status_code != 200:
