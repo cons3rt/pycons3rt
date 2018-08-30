@@ -33,9 +33,9 @@ else:
 sample_nexus_url = 'https://nexus.jackpinetech.com/nexus/service/local/artifact/maven/redirect'
 
 # Suppress warning for Python 2.6
-requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
-requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecurePlatformWarning)
-requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.SNIMissingWarning)
+#requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+#requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecurePlatformWarning)
+#requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.SNIMissingWarning)
 
 
 def query_nexus(query_url, timeout_sec, basic_auth=None):
@@ -63,15 +63,15 @@ def query_nexus(query_url, timeout_sec, basic_auth=None):
             nexus_response = requests.get(query_url, auth=basic_auth, stream=True, timeout=timeout_sec)
         except requests.exceptions.Timeout:
             _, ex, trace = sys.exc_info()
-            msg = 'Caught {n} exception: Nexus initial query timed out after {t} seconds:\n{e}'.format(
+            msg = '{n}: Nexus initial query timed out after {t} seconds:\n{e}'.format(
                 n=ex.__class__.__name__, t=timeout_sec, r=retry_sec, e=str(ex))
             log.warn(msg)
             if try_num < max_retries:
                 log.info('Retrying query in {t} sec...'.format(t=retry_sec))
                 time.sleep(retry_sec)
-        except requests.exceptions.RequestException:
+        except (requests.exceptions.RequestException, requests.exceptions.ConnectionError):
             _, ex, trace = sys.exc_info()
-            msg = 'Caught {n} exception: Nexus initial query failed with the following exception:\n{e}'.format(
+            msg = '{n}: Nexus initial query failed with the following exception:\n{e}'.format(
                 n=ex.__class__.__name__, r=retry_sec, e=str(ex))
             log.warn(msg)
             if try_num < max_retries:
@@ -229,7 +229,7 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
             nexus_response = query_nexus(query_url=query_url, timeout_sec=timeout_sec, basic_auth=basic_auth)
         except RuntimeError:
             _, ex, trace = sys.exc_info()
-            msg = 'Caught {n} exception: There was a problem querying Nexus URL: {u}\n{e}'.format(
+            msg = '{n}: There was a problem querying Nexus URL: {u}\n{e}'.format(
                 n=ex.__class__.__name__, u=query_url, e=str(ex))
             log.error(msg)
             raise RuntimeError, msg, trace

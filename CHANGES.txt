@@ -5,6 +5,9 @@
 * Added the ability to skip files with specific extensions to
 create the asset zip file
 * Removed cons3rtutil.py, it is not useful to anybody
+* Added exception handling around posting a Slack message
+* Added exception handling for a ConnectionError around querying Nexus
+* Removed warning suppression for Python 2.6 from nexus.py
 
 0.0.3
 =====
