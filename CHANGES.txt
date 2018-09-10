@@ -4,6 +4,8 @@
 
 * Updated add_nat_rule to use the ip_addr function which works
 better across Linux distributions
+* Added re-try logic to the AWS meta data service is_aws method
+to handle cases after system reboots
 
 0.0.4
 =====
