@@ -21,6 +21,7 @@ import platform
 from threading import Timer
 
 from logify import Logify
+from aliasip import ip_addr
 
 __author__ = 'Joe Yennaco'
 
@@ -168,13 +169,14 @@ def get_ip_addresses():
         result = run_command(command)
     except CommandError:
         raise
-    ifconfig = result['output']
+    ifconfig = result['output'].strip()
 
     # Scan the ifconfig output for IPv4 addresses
     devices = {}
     parts = ifconfig.split()
     device = None
     for part in parts:
+
         if device is None:
             if 'eth' in part or 'eno' in part:
                 device = part
@@ -941,7 +943,7 @@ def add_nat_rule(port, source_interface, dest_interface):
         log.error(msg)
         raise TypeError(msg)
 
-    ip_addresses = get_ip_addresses()
+    ip_addresses = ip_addr()
     destination_ip = ip_addresses['eth{i}'.format(i=dest_interface)]
     log.info('Using destination IP address: {d}'.format(d=destination_ip))
 

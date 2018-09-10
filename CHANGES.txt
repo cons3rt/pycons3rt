@@ -1,4 +1,10 @@
 
+0.0.5.dev0 (in development)
+===========================
+
+* Updated add_nat_rule to use the ip_addr function which works
+better across Linux distributions
+
 0.0.4
 =====
 
