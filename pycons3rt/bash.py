@@ -18,6 +18,8 @@ import socket
 import contextlib
 import time
 import platform
+import shutil
+from datetime import datetime
 from threading import Timer
 
 from logify import Logify
@@ -1041,22 +1043,13 @@ def add_nat_rule(port, source_interface, dest_interface):
         log.info('Successfully ran command: {c}'.format(c=command))
 
     # Save the iptables with the new NAT rule
-    command = ['/etc/init.d/iptables', 'save']
-    log.info('Running command: {c}'.format(c=command))
     try:
-        subprocess.check_call(command)
+        save_iptables()
     except OSError:
         _, ex, trace = sys.exc_info()
-        msg = 'There was a problem running command: {c}\n{e}'.format(c=command, e=str(ex))
-        log.error(msg)
+        msg = 'OSError: There was a problem saving iptables rules\n{e}'.format(e=str(ex))
         raise OSError, msg, trace
-    except subprocess.CalledProcessError:
-        _, ex, trace = sys.exc_info()
-        msg = 'Command returned a non-zero exit code: {c}\n{e}'.format(c=command, e=str(ex))
-        log.error(msg)
-        raise OSError, msg, trace
-    else:
-        log.info('Successfully ran command: {c}'.format(c=command))
+    log.info('Successfully saved iptables rules with the NAT rule')
 
 
 def service_network_restart():
@@ -1081,6 +1074,42 @@ def service_network_restart():
         raise CommandError(msg)
     else:
         log.info('Successfully restarted networking!')
+
+
+def save_iptables(rules_file='/etc/sysconfig/iptables'):
+    """Saves iptables rules to the provided rules file
+
+    :return: None
+    :raises OSError
+    """
+    log = logging.getLogger(mod_logger + '.set_source_ip_for_interface')
+
+    # Run iptables-save to get the output
+    command = ['iptables-save']
+    log.debug('Running command: iptables-save')
+    try:
+        iptables_out = run_command(command, timeout_sec=20)
+    except CommandError:
+        _, ex, trace = sys.exc_info()
+        msg = 'There was a problem running iptables command: {c}\n{e}'.format(c=' '.join(command), e=str(ex))
+        raise OSError, msg, trace
+
+    # Error if iptables-save did not exit clean
+    if int(iptables_out['code']) != 0:
+        raise OSError('Command [{g}] exited with code [{c}] and output:\n{o}'.format(
+            g=' '.join(command), c=iptables_out['code'], o=iptables_out['output']))
+
+    # Back up the existing rules file if it exists
+    if os.path.isfile(rules_file):
+        time_now = datetime.now().strftime('%Y%m%d-%H%M%S')
+        backup_file = '{f}.{d}'.format(f=rules_file, d=time_now)
+        log.debug('Creating backup file: {f}'.format(f=backup_file))
+        shutil.copy2(rules_file, backup_file)
+
+    # Save the output to the rules file
+    log.debug('Creating file: {f}'.format(f=rules_file))
+    with open(rules_file, 'w') as f:
+        f.write(iptables_out['output'])
 
 
 def get_remote_host_environment_variable(host, environment_variable):
@@ -1309,8 +1338,6 @@ def create_remote_host_marker_file(host, file_path):
 
 def restore_iptables(firewall_rules):
     """Restores and saves firewall rules from the firewall_rules file
-
-    TODO: Remove this deprecated function, functionality moved to post-STIG asset
 
     :param firewall_rules: (str) Full path to the firewall rules file
     :return: None

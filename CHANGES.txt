@@ -1,4 +1,10 @@
 
+0.0.6.dev0 (in development)
+===========================
+
+* Moved the save_iptables method from aliasip.py to bash.py
+* Cleaned up aliasip.py
+
 0.0.5
 =====
 

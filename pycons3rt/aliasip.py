@@ -10,27 +10,11 @@ import logging
 import socket
 import os
 import sys
-import shutil
-from datetime import datetime
 
-# Pass ImportError on boto3 for offline assets
-try:
-    import boto3
-    from botocore.client import ClientError
-except ImportError:
-    boto3 = None
-    ClientError = None
-    pass
-
-from bash import run_command
-from bash import get_ip_addresses
-from bash import service_network_restart
-from bash import CommandError
+from bash import run_command, CommandError, service_network_restart
 from logify import Logify
-
-from pycons3rt.awsapi.metadata import is_aws
-from pycons3rt.awsapi.ec2util import EC2Util
-from pycons3rt.awsapi.ec2util import EC2UtilError
+from awsapi.metadata import is_aws
+from awsapi.ec2util import EC2Util, EC2UtilError
 
 __author__ = 'Joe Yennaco'
 
@@ -344,42 +328,6 @@ def set_source_ip_for_interface(source_ip_address, desired_source_ip_address, de
         d=device_name, i=desired_source_ip_address))
 
 
-def save_iptables(rules_file='/etc/sysconfig/iptables'):
-    """Saves iptables rules to the provided rules file
-
-    :return: None
-    :raises OSError
-    """
-    log = logging.getLogger(mod_logger + '.set_source_ip_for_interface')
-
-    # Run iptables-save to get the output
-    command = ['iptables-save']
-    log.debug('Running command: iptables-save')
-    try:
-        iptables_out = run_command(command, timeout_sec=20)
-    except CommandError:
-        _, ex, trace = sys.exc_info()
-        msg = 'There was a problem running iptables command: {c}\n{e}'.format(c=' '.join(command), e=str(ex))
-        raise OSError, msg, trace
-
-    # Error if iptables-save did not exit clean
-    if int(iptables_out['code']) != 0:
-        raise OSError('Command [{g}] exited with code [{c}] and output:\n{o}'.format(
-            g=' '.join(command), c=iptables_out['code'], o=iptables_out['output']))
-
-    # Back up the existing rules file if it exists
-    if os.path.isfile(rules_file):
-        time_now = datetime.now().strftime('%Y%m%d-%H%M%S')
-        backup_file = '{f}.{d}'.format(f=rules_file, d=time_now)
-        log.debug('Creating backup file: {f}'.format(f=backup_file))
-        shutil.copy2(rules_file, backup_file)
-
-    # Save the output to the rules file
-    log.debug('Creating file: {f}'.format(f=rules_file))
-    with open(rules_file, 'w') as f:
-        f.write(iptables_out['output'])
-
-
 def main():
     """Sample usage for this python module
 
@@ -390,8 +338,6 @@ def main():
     """
     log = logging.getLogger(mod_logger + '.main')
     log.info('Main!')
-    ips = get_ip_addresses()
-    log.info('Found: %s', ips)
 
 
 if __name__ == '__main__':
