@@ -1,6 +1,6 @@
 
-0.0.6.dev0 (in development)
-===========================
+0.0.6
+=====
 
 * Moved the save_iptables method from aliasip.py to bash.py
 * Cleaned up aliasip.py
