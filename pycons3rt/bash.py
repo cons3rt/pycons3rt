@@ -1082,7 +1082,7 @@ def save_iptables(rules_file='/etc/sysconfig/iptables'):
     :return: None
     :raises OSError
     """
-    log = logging.getLogger(mod_logger + '.set_source_ip_for_interface')
+    log = logging.getLogger(mod_logger + '.save_iptables')
 
     # Run iptables-save to get the output
     command = ['iptables-save']
