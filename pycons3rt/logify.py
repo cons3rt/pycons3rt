@@ -37,7 +37,6 @@ class Logify(object):
         msg = 'Unable to create pycons3rt directories\n{e}'.format(e=str(ex))
         print msg
         raise OSError(msg)
-    os.chdir(log_dir)
     config_file = os.path.join(conf_dir, 'pycons3rt-logging.conf')
     log_file_info = os.path.join(log_dir, 'pycons3rt-info.log')
     log_file_debug = os.path.join(log_dir, 'pycons3rt-debug.log')

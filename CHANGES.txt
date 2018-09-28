@@ -1,4 +1,10 @@
 
+0.0.7
+=====
+
+* Updated pycons3rt to lo longer change directories to the
+log directory, and fixed the 'pycons3rt_setup' CLI command
+
 0.0.6
 =====
 

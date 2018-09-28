@@ -11,8 +11,57 @@ import shutil
 import sys
 import errno
 import traceback
+import fileinput
+import re
 
 __author__ = 'Joe Yennaco'
+
+
+default_logging_conf_file_contents = '''[loggers]
+keys=root
+
+[handlers]
+keys=stream_handler,file_handler_info,file_handler_debug,file_handler_warn
+
+[formatters]
+keys=formatter_info,formatter_debug
+
+[logger_root]
+level=DEBUG
+handlers=stream_handler,file_handler_info,file_handler_debug,file_handler_warn
+
+[handler_stream_handler]
+class=StreamHandler
+level=INFO
+formatter=formatter_info
+args=(sys.stderr,)
+
+[handler_file_handler_info]
+class=FileHandler
+level=INFO
+formatter=formatter_info
+args=('REPLACE_LOG_DIRpycons3rt-info.log', 'a')
+
+[handler_file_handler_debug]
+class=FileHandler
+level=DEBUG
+formatter=formatter_debug
+args=('REPLACE_LOG_DIRpycons3rt-debug.log', 'a')
+
+[handler_file_handler_warn]
+class=FileHandler
+level=WARN
+formatter=formatter_debug
+args=('REPLACE_LOG_DIRpycons3rt-warn.log', 'a')
+
+[formatter_formatter_info]
+format=%(asctime)s [%(levelname)s] %(name)s - %(message)s
+
+[formatter_formatter_debug]
+format=%(asctime)s [%(levelname)s] %(name)s <%(threadName)s> - %(message)s
+'''
+
+replace_str = 'REPLACE_LOG_DIR'
 
 
 def get_os():
@@ -106,14 +155,25 @@ def main():
         traceback.print_exc()
         return 1
 
-    # Copy the logging config file to the conf directory
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    logging_config_file = os.path.join(script_dir, 'pycons3rt-logging.conf')
-    if not os.path.isfile(logging_config_file):
-        print 'Logging config file not found: {f}'.format(f=logging_config_file)
-        return 2
-    shutil.copy2(logging_config_file, get_pycons3rt_conf_dir())
 
+
+    # Replace log directory paths
+    log_dir_path = get_pycons3rt_log_dir() + os.path.sep
+    conf_contents = default_logging_conf_file_contents.replace(replace_str, log_dir_path)
+
+    # Create the logging config file
+    logging_config_file_dest = os.path.join(get_pycons3rt_conf_dir(), 'pycons3rt-logging.conf')
+    with open(logging_config_file_dest, 'w') as f:
+        f.write(conf_contents)
+    """
+    
+    for line in fileinput.input(logging_config_file_dest, inplace=True):
+        if re.search(replace_str, line):
+            new_line = re.sub(replace_str, log_dir_path, line, count=0)
+            sys.stdout.write(new_line)
+        else:
+            sys.stdout.write(line)
+    """
     print 'Completed pycons3rt configuration'
     return 0
 
