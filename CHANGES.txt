@@ -1,4 +1,9 @@
 
+0.0.8
+=====
+
+* Added support for Nexus v3 artifact download URLs
+
 0.0.7
 =====
 
