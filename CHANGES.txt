@@ -1,4 +1,11 @@
 
+0.0.9
+=====
+
+* Added the deployment.set_scenario_hosts_file to set hosts file
+entries for each scenario host using a specific network, and optionally
+include a domain name
+
 0.0.8
 =====
 
