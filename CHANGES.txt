@@ -1,8 +1,14 @@
 
+0.0.10
+======
+
+* Added the Deployment.set_hosts_file_entry_for_role to set a hosts
+file entry for a specific scenario host on a specific network
+
 0.0.9
 =====
 
-* Added the deployment.set_scenario_hosts_file to set hosts file
+* Added the Deployment.set_scenario_hosts_file to set hosts file
 entries for each scenario host using a specific network, and optionally
 include a domain name
 
