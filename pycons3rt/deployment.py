@@ -23,8 +23,9 @@ import platform
 
 from logify import Logify
 from osutil import get_os
-from bash import get_ip_addresses
-from bash import CommandError
+from bash import get_ip_addresses, CommandError
+from bash import update_hosts_file as update_hosts_file_linux
+from windows import update_hosts_file as update_hosts_file_windows
 
 __author__ = 'Joe Yennaco'
 
@@ -557,6 +558,42 @@ class Deployment(object):
         log = logging.getLogger(self.cls_logger + '.set_virtualization_realm_type')
         self.virtualization_realm_type = self.get_value('cons3rt.deploymentRun.virtRealm.type')
         log.info('Found virtualization realm type : {t}'.format(t=self.virtualization_realm_type))
+
+    def update_hosts_file(self, ip, entry):
+        """Updated the hosts file depending on the OS
+
+        :param ip: (str) IP address to update
+        :param entry: (str) entry to associate to the IP address
+        :return: None
+        """
+        log = logging.getLogger(self.cls_logger + '.update_hosts_file')
+
+        if get_os() in ['Linux', 'Darwin']:
+            update_hosts_file_linux(ip=ip, entry=entry)
+        elif get_os() == 'Windows':
+            update_hosts_file_windows(ip=ip, entry=entry)
+        else:
+            log.warn('OS detected was not Windows nor Linux')
+
+    def set_scenario_hosts_file(self, network_name='user-net', domain_name=None):
+        """Adds hosts file entries for each system in the scenario
+        for the specified network_name provided
+
+        :param network_name: (str) Name of the network to add to the hosts file
+        :param domain_name: (str) Domain name to include in the hosts file entries if provided
+        :return: None
+        """
+        log = logging.getLogger(self.cls_logger + '.set_scenario_hosts_file')
+
+        log.info('Scanning scenario hosts to make entries in the hosts file for network: {n}'.format(n=network_name))
+        for scenario_host in self.scenario_network_info:
+            if domain_name:
+                host_file_entry = '{r}.{d} {r}'.format(r=scenario_host['scenario_role_name'], d=domain_name)
+            else:
+                host_file_entry = scenario_host['scenario_role_name']
+            for host_network_info in scenario_host['network_info']:
+                if host_network_info['network_name'] == network_name:
+                    self.update_hosts_file(ip=host_network_info['internal_ip'], entry=host_file_entry)
 
 
 def main():

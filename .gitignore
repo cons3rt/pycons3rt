@@ -5,6 +5,7 @@ dist
 .project
 *egg-info*
 pycons3rt/*.pyc
+pycons3rt/awsapi/*.pyc
 pycons3rt/*.pyo
 pycons3rt/bin
 pycons3rt/build
