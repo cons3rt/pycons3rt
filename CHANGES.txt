@@ -1,4 +1,9 @@
 
+0.0.11.dev0
+===========
+
+* Added Deployment.get_ip_on_network
+
 0.0.10
 ======
 
