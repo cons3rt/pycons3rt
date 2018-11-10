@@ -14,6 +14,14 @@ python slack.py \
     --color=good \
     --pretext="This is pretext" \
     --icon="https://s3.amazonaws.com/jackpine-images/homer-flexing.jpg"
+
+Or use the slack CLI command:
+
+slack \
+--url="https://hooks.slack.com/services/my-webhook-url" \
+--text="HELLO WORLD!" \
+--channel="#helpful"
+
 """
 import logging
 import json
@@ -141,7 +149,7 @@ class SlackMessage(object):
         except(TypeError, ValueError, OverflowError):
             _, ex, trace = sys.exc_info()
             msg = 'There was a problem encoding the JSON payload\n{e}'.format(e=str(ex))
-            OSError, msg, trace
+            raise OSError, msg, trace
         else:
             log.debug('JSON payload: %s', json_payload)
 
@@ -234,7 +242,7 @@ class Cons3rtSlacker(SlackMessage):
         for item in os.listdir(self.dep.cons3rt_agent_log_dir):
             item_path = os.path.join(self.dep.cons3rt_agent_log_dir, item)
             if os.path.isfile(item_path):
-                log.info('Adding slack attachment with cons3rt agent log file: {f}'.format(f=item_path))
+                log.debug('Adding slack attachment with cons3rt agent log file: {f}'.format(f=item_path))
                 try:
                     with open(item_path, 'r') as f:
                         file_text = f.read()
@@ -265,7 +273,7 @@ class Cons3rtSlacker(SlackMessage):
             msg = 'The provided text_file was not found or is not a file: {f}'.format(f=text_file)
             raise Cons3rtSlackerError(msg)
 
-        log.info('Attempting to send a Slack message with the contents of file: {f}'.format(f=text_file))
+        log.debug('Attempting to send a Slack message with the contents of file: {f}'.format(f=text_file))
         try:
             with open(text_file, 'r') as f:
                 file_text = f.read()
@@ -316,25 +324,20 @@ def main():
         try:
             slack_att = SlackAttachment(fallback=args.attachment, color=args.color,
                                         pretext=args.pretext, text=args.attachment)
-        except ValueError as e:
-            msg = 'Unable to create slack attachment\n{ex}'.format(ex=e)
-            log.error(msg)
-            print msg
+        except ValueError:
+            _, ex, trace = sys.exc_info()
+            log.error('Unable to create slack attachment\n{e}'.format(e=str(ex)))
             return
         slack_msg.add_attachment(slack_att)
 
     # Send Slack message
     try:
         slack_msg.send()
-    except(TypeError, ValueError, IOError) as e:
-        msg = 'Unable to send Slack message\n{ex}'.format(ex=e)
-        log.error(msg)
-        print msg
+    except(TypeError, ValueError, IOError):
+        _, ex, trace = sys.exc_info()
+        log.error('Unable to send Slack message\n{e}'.format(e=str(ex)))
         return
-    else:
-        msg = 'Your message has been Slacked!'
-        log.info(msg)
-        print msg
+    log.debug('Your message has been Slacked successfully!')
 
 
 if __name__ == '__main__':
