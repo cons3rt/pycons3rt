@@ -1,6 +1,6 @@
 
-0.0.11.dev0
-===========
+0.0.11
+======
 
 * Added deployment.Deployment.get_ip_on_network to return
 the IP for a cons3rt network
