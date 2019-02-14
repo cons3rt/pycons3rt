@@ -1,4 +1,13 @@
 
+0.0.12
+======
+
+* Added deployment.Deployment.get_scenario_host_ip_on_network
+to return an IP address for a scenario host on a specific
+network
+* Added security_group_list as an option to Ec2Util.launch_instance
+to pass in a list of security groups
+
 0.0.11
 ======
 

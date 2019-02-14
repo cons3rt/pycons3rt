@@ -775,25 +775,33 @@ class EC2Util(object):
             log.info('Successfully added ingress rule for Security Group {g} on port: {p}'.format(
                     g=security_group_id, p=port))
 
-    def launch_instance(self, ami_id, key_name, subnet_id, security_group_id=None, user_data_script_path=None,
-                        instance_type='t2.small', root_device_name='/dev/xvda'):
-        """Launches an EC2 instance with the specified parameters, intended to launch 
+    def launch_instance(self, ami_id, key_name, subnet_id, security_group_id=None, security_group_list=None,
+                        user_data_script_path=None, instance_type='t2.small', root_device_name='/dev/xvda'):
+        """Launches an EC2 instance with the specified parameters, intended to launch
         an instance for creation of a CONS3RT template.
-        
+
         :param ami_id: (str) ID of the AMI to launch from
         :param key_name: (str) Name of the key-pair to use
         :param subnet_id: (str) IF of the VPC subnet to attach the instance to
         :param security_group_id: (str) ID of the security group, of not provided the default will be applied
+                appended to security_group_list if provided
+        :param security_group_id_list: (list) of IDs of the security group, if not provided the default will be applied
         :param user_data_script_path: (str) Path to the user-data script to run
         :param instance_type: (str) Instance Type (e.g. t2.micro)
         :param root_device_name: (str) The device name for the root volume
-        :return: 
+        :return:
         """
         log = logging.getLogger(self.cls_logger + '.launch_instance')
-        security_group_list = None
         log.info('Launching with AMI ID: {a}'.format(a=ami_id))
         log.info('Launching with Key Pair: {k}'.format(k=key_name))
-        if security_group_id is not None:
+
+        if security_group_list:
+            if not isinstance(security_group_list, list):
+                raise EC2UtilError('security_group_list must be a list')
+
+        if security_group_id and security_group_list:
+            security_group_list.append(security_group_id)
+        elif security_group_id and not security_group_list:
             security_group_list = [security_group_id]
             log.info('Launching with security group list: {s}'.format(s=security_group_list))
         user_data = None
