@@ -1,5 +1,6 @@
 build
 venv
+venv3
 dist
 .idea
 .project
@@ -10,3 +11,4 @@ pycons3rt/*.pyo
 pycons3rt/bin
 pycons3rt/build
 pycons3rt/venv
+pycons3rt/__pycache__
