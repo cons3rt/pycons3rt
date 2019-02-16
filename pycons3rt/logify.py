@@ -35,7 +35,6 @@ class Logify(object):
         osutil.initialize_pycons3rt_dirs()
     except OSError as ex:
         msg = 'Unable to create pycons3rt directories\n{e}'.format(e=str(ex))
-        print msg
         raise OSError(msg)
     config_file = os.path.join(conf_dir, 'pycons3rt-logging.conf')
     log_file_info = os.path.join(log_dir, 'pycons3rt-info.log')
@@ -45,8 +44,6 @@ class Logify(object):
         fileConfig(config_file)
     except (IOError, OSError, Exception):
         _, ex, trace = sys.exc_info()
-        print 'Logging config file not found: {f}, using standard configuration...\n{e}'.format(
-                f=config_file, e=str(ex))
         _logger = logging.getLogger('pycons3rt')
         _logger.setLevel(logging.DEBUG)
         _formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s - %(message)s')
@@ -68,7 +65,6 @@ class Logify(object):
         _logger.addHandler(_file_debug)
         _logger.addHandler(_file_warn)
     else:
-        print 'Loaded logging config file: {f}'.format(f=config_file)
         _logger = logging.getLogger('pycons3rt')
 
     # Set up logger name for this module

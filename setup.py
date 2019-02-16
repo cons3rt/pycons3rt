@@ -49,7 +49,8 @@ dist = setup(
         'console_scripts': [
             'pycons3rt_setup = pycons3rt.osutil:main',
             'asset = pycons3rt.asset:main',
-            'slack = pycons3rt.slack:main'
+            'slack = pycons3rt.slack:main',
+            'deployment = pycons3rt.deployment:main'
         ],
     },
     classifiers=[

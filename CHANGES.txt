@@ -1,4 +1,10 @@
 
+0.0.13.dev0
+===========
+
+* Added deployment CLI for returning deployment related info including
+networking info, role names, and deployment properties
+
 0.0.12
 ======
 

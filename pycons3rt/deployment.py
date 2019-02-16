@@ -20,6 +20,7 @@ import sys
 import traceback
 import re
 import platform
+import argparse
 
 from logify import Logify
 from osutil import get_os
@@ -709,31 +710,38 @@ def main():
     :return: None
     """
     log = logging.getLogger(mod_logger + '.main')
-    try:
-        log.info('Testing the Deployment class...')
-        deployment = Deployment()
-    except DeploymentError:
-        log.error('Unable to get deployment info')
-        traceback.print_exc()
-        return
+    parser = argparse.ArgumentParser(description='cons3rt deployment CLI')
+    parser.add_argument('command', help='Command for the deployment CLI')
+    parser.add_argument('--network', help='Name of the network')
+    parser.add_argument('--name', help='Name of a deployment property to get')
+    args = parser.parse_args()
 
-    log.debug('This is DEBUG')
-    log.info('This is INFO')
-    log.warning('This is a WARNING')
-    log.error('This is an ERROR')
-    log.info('CONS3RT_ROLE_NAME: %s', deployment.cons3rt_role_name)
-    log.info('DEPLOYMENT_HOME: %s', deployment.deployment_home)
-    log.info('ASSET_DIR: %s', deployment.asset_dir)
-    user = deployment.get_value('cons3rt.user')
-    if user:
-        log.info('Found user: %s', user)
-    else:
-        log.warn('Did not find a user :(')
-    deployment_id = deployment.get_value('deployment.id')
-    if deployment_id:
-        log.info('Found deployment id: %s', deployment_id)
-    else:
-        log.warn('Did not find deployment id :(')
+    valid_commands = ['ip', 'device', 'prop']
+    valid_commands_str = ','.join(valid_commands)
+
+    # Get the command
+    command = args.command.strip().lower()
+
+    # Ensure the command is valid
+    if command not in valid_commands:
+        print('Invalid command found [{c}]\n'.format(c=command) + valid_commands_str)
+        return 1
+
+    if command == 'ip':
+        if not args.network:
+            print('Missed arg: --network, for the name of the network')
+    elif command == 'device':
+        if not args.network:
+            print('Missed arg: --network, for the name of the network')
+            return 1
+        d = Deployment()
+        print(d.get_device_for_network_linux(network_name=args.network))
+    elif command == 'prop':
+        if not args.name:
+            print('Missed arg: --name, for the name of the property to retrieve')
+            return 1
+        d = Deployment()
+        print(d.get_value(property_name=args.name))
 
 
 if __name__ == '__main__':

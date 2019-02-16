@@ -274,7 +274,7 @@ def get_artifact(suppress_status=False, nexus_url=sample_nexus_url, timeout_sec=
                         status = r"%10d  [%3.2f%%]" % (file_size_dl, file_size_dl * 100. / file_size)
                         status += chr(8)*(len(status)+1)
                         if not suppress_status:
-                            print status,
+                            print(status),
         except(requests.exceptions.ConnectionError, requests.exceptions.RequestException, OSError):
             _, ex, trace = sys.exc_info()
             dl_err = '{n}: There was an error reading content from the Nexus response. Downloaded ' \
@@ -528,7 +528,7 @@ def get_artifact_nexus3(suppress_status=False, nexus_base_url=sample_nexus_base_
                         status = r"%10d  [%3.2f%%]" % (file_size_dl, file_size_dl * 100. / file_size)
                         status += chr(8)*(len(status)+1)
                         if not suppress_status:
-                            print status,
+                            print(status),
         except(requests.exceptions.ConnectionError, requests.exceptions.RequestException, OSError):
             _, ex, trace = sys.exc_info()
             dl_err = '{n}: There was an error reading content from the Nexus response. Downloaded ' \

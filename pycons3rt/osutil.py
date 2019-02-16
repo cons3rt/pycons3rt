@@ -133,7 +133,6 @@ def initialize_pycons3rt_dirs():
                           get_pycons3rt_src_dir()]:
         if os.path.isdir(pycons3rt_dir):
             continue
-        print 'Creating directory: {d}'.format(d=pycons3rt_dir)
         try:
             os.makedirs(pycons3rt_dir)
         except OSError as e:
@@ -141,17 +140,14 @@ def initialize_pycons3rt_dirs():
                 pass
             else:
                 msg = 'Unable to create directory: {d}'.format(d=pycons3rt_dir)
-                print msg
                 raise OSError(msg)
 
 
 def main():
     # Create the pycons3rt directories
-    print 'Initializing pycons3rt directories...'
     try:
         initialize_pycons3rt_dirs()
     except OSError as ex:
-        print 'There was a problem deploying CONS3RT with Homer!\n{e}'.format(e=str(ex))
         traceback.print_exc()
         return 1
 
@@ -174,7 +170,6 @@ def main():
         else:
             sys.stdout.write(line)
     """
-    print 'Completed pycons3rt configuration'
     return 0
 
 

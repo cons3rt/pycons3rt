@@ -316,7 +316,7 @@ def main():
     except ValueError as e:
         msg = 'Unable to create slack message\n{ex}'.format(ex=e)
         log.error(msg)
-        print msg
+        print(msg)
         return
 
     # If provided, create the SlackAttachment object
