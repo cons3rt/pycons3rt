@@ -1,9 +1,12 @@
 
-0.0.13.dev0
-===========
+0.0.13
+======
 
 * Added deployment CLI for returning deployment related info including
 networking info, role names, and deployment properties
+* Added a call to list security groups in the same VPC as the EC2
+instance
+* Added a call to revoke security group rules in AWS
 
 0.0.12
 ======

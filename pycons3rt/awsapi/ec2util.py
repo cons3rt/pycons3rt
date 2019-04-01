@@ -666,6 +666,40 @@ class EC2Util(object):
             log.info('Successfully created Security Group <{n}> in VPC: {v}'.format(n=name, v=vpc_id))
         return response['GroupId']
 
+    def list_security_groups_in_vpc(self, vpc_id=None):
+        """Lists security groups in the VPC.  If vpc_id is not provided, use self.vpc_id
+
+        :param vpc_id: (str) VPC ID to list security groups for
+        :return: (list) Security Group info
+        :raises: AWSAPIError, EC2UtilError
+        """
+        log = logging.getLogger(self.cls_logger + '.list_security_groups_in_vpc')
+        if vpc_id is None and self.vpc_id is not None:
+            vpc_id = self.vpc_id
+        else:
+            msg = 'Unable to determine VPC ID to use to create the Security Group'
+            log.error(msg)
+            raise EC2UtilError(msg)
+
+        # Create a filter on the VPC ID
+        filters = [
+            {
+                'Name': 'vpc-id',
+                'Values': [vpc_id]
+            }
+        ]
+
+        # Get a list of security groups in the VPC
+        log.info('Querying for a list of security groups in VPC ID: {v}'.format(v=vpc_id))
+        try:
+            security_groups = self.client.describe_security_groups(DryRun=False, Filters=filters)
+        except ClientError:
+            _, ex, trace = sys.exc_info()
+            msg = 'Unable to query AWS for a list of security groups in VPC ID: {v}\n{e}'.format(
+                v=vpc_id, e=str(ex))
+            raise AWSAPIError, msg, trace
+        return security_groups
+
     def configure_security_group_ingress(self, security_group_id, port, desired_cidr_blocks):
         """Configures the security group ID allowing access
         only to the specified CIDR blocks, for the specified
@@ -774,6 +808,28 @@ class EC2Util(object):
         else:
             log.info('Successfully added ingress rule for Security Group {g} on port: {p}'.format(
                     g=security_group_id, p=port))
+
+    def revoke_security_group_ingress(self, security_group_id, ingress_rules):
+        """Revokes all ingress rules for a security group bu ID
+
+        :param security_group_id: (str) Security Group ID
+        :param port: (str) TCP Port number
+        :param ingress_rules: (list) List of IP permissions (see AWS API docs re: IpPermissions)
+        :return: None
+        :raises: AWSAPIError, EC2UtilError
+        """
+        log = logging.getLogger(self.cls_logger + '.revoke_security_group_ingress')
+        log.info('Revoking ingress rules from security group: {g}'.format(g=security_group_id))
+        try:
+            self.client.revoke_security_group_ingress(
+                DryRun=False,
+                GroupId=security_group_id,
+                IpPermissions=ingress_rules)
+        except ClientError:
+            _, ex, trace = sys.exc_info()
+            msg = 'Unable to remove existing Security Group rules for port from Security Group: {g}\n{e}'.format(
+                g=security_group_id, e=str(ex))
+            raise AWSAPIError, msg, trace
 
     def launch_instance(self, ami_id, key_name, subnet_id, security_group_id=None, security_group_list=None,
                         user_data_script_path=None, instance_type='t2.small', root_device_name='/dev/xvda'):
