@@ -1,5 +1,9 @@
 # pycons3rt Python Library for CONS3RT Assets
 
+# DEPRECATED
+
+## python v2 has been left behind, please use pycons3rt3
+
 ## Features
 
 * Gathers CONS3RT deployment info
